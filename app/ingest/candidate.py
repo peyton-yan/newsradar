@@ -21,13 +21,26 @@ NEGATIVE_SEED = """涨停 跌停 龙虎榜 游资 打板 股吧 荐股 牛股 �
 个股 财报 业绩预告 股东减持 人事变动 绯闻 八卦 星座 彩票 体育 娱乐
 广告 优惠 抽奖 直播带货 案件 判刑 车祸""".split()
 
+# High-value terms that should not be lost just because the generic keyword
+# seed missed a company/product name. These are a rescue lane, not a second
+# importance score: a hit queues the item for the model, which makes the call.
+RESCUE_SEED = """AI 人工智能 大模型 模型 算力 芯片 半导体 6G 5G 通信 互联网
+平台 数据 微软 Meta 苹果 谷歌 OpenAI DeepSeek OpenCode 机器人 自动驾驶
+航天 卫星 新能源 光伏 锂电 汽车 关税 制裁 美联储 央行 财政部 发改委
+工信部 统计局 证监会 国务院 政治局""".split()
+
 
 def _hits(text: str, words: list[str]) -> list[str]:
+    folded = text.casefold()
     found: list[str] = []
     for word in words:
-        if word and word in text and word not in found:
+        if word and word.casefold() in folded and word not in found:
             found.append(word)
     return found
+
+
+def rescue_hits(title: str, description: str) -> list[str]:
+    return _hits(f"{title} {description}", RESCUE_SEED)
 
 
 def score_text(

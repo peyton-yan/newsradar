@@ -11,7 +11,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.db import Database, utcnow
-from app.ingest.candidate import NEGATIVE_SEED, POSITIVE_SEED, score_text
+from app.ingest.candidate import NEGATIVE_SEED, POSITIVE_SEED, rescue_hits, score_text
 from app.ingest.normalize import (
     canonicalize_url,
     clean_html,
@@ -301,10 +301,10 @@ class IngestService:
                 select(NewsItem, Source.tier).join(Source, Source.id == NewsItem.source_id)
             ).all()
             for item, tier in rows:
-                if item.status in {"duplicate", "analyzed"}:
+                if item.status in {"duplicate", "analyzed", "expired"}:
                     skipped += 1
                     continue
-                score, _, _ = score_text(
+                score, _, neg_hits = score_text(
                     item.title,
                     item.description,
                     int(tier or 3),
@@ -314,7 +314,8 @@ class IngestService:
                     negative=negative,
                 )
                 item.heuristic_score = score
-                item.status = "queued" if score >= min_score else "filtered"
+                rescued = bool(rescue_hits(item.title, item.description)) and not neg_hits
+                item.status = "queued" if score >= min_score or rescued else "filtered"
                 if item.status == "queued":
                     queued += 1
                 else:
@@ -555,7 +556,7 @@ class IngestService:
             session.add(cluster)
             session.flush()
             item.cluster_id = cluster.id
-            score, _, _ = score_text(
+            score, _, neg_hits = score_text(
                 title,
                 description,
                 tier,
@@ -565,7 +566,8 @@ class IngestService:
                 negative=negative,
             )
             item.heuristic_score = score
-            item.status = "queued" if score >= min_score else "filtered"
+            rescued = bool(rescue_hits(title, description)) and not neg_hits
+            item.status = "queued" if score >= min_score or rescued else "filtered"
             return "queued" if item.status == "queued" else "filtered"
 
     @staticmethod

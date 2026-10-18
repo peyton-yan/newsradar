@@ -498,7 +498,7 @@ class PushService:
                 select(Analysis, NewsItem)
                 .join(NewsItem, NewsItem.id == Analysis.news_id)
                 .where(Analysis.push_status == "pending", Analysis.push_eligible.is_(True))
-                .order_by(Analysis.created_at, Analysis.id)
+                .order_by(Analysis.push_score.desc(), Analysis.created_at, Analysis.id)
                 .limit(max(1, limit))
             ).all()
             rows = list(rows)
