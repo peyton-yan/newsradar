@@ -35,5 +35,8 @@ Thumbs.db
 blog/
 skills/
 
+# 产品版 C 代码是独立私有仓库，不混入开源仓库
+product-c/
+
 # 本地凭据
 .git-credentials
