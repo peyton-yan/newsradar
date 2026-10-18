@@ -1,0 +1,39 @@
+# Python
+__pycache__/
+*.py[cod]
+.venv/
+venv/
+.pytest_cache/
+.ruff_cache/
+*.egg-info/
+build/
+dist/
+
+# Runtime data
+*.db
+*.db-wal
+*.db-shm
+*.sqlite
+*.sqlite3
+var/
+logs/
+
+# Secrets / local deployment
+.env
+*.env
+master.key
+askpass.cmd
+newsradar-m1.tar.gz
+
+# OS / local tools
+.DS_Store
+Thumbs.db
+.edge-profile/
+*.log
+
+# 文章与公众号排版工具是作者个人发布用途，不属于开源项目
+blog/
+skills/
+
+# 本地凭据
+.git-credentials

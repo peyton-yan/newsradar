@@ -1,0 +1,62 @@
+{% extends "base.html" %}
+{% block title %}{{ item.title }} · 财经宏观雷达{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">NEWS ITEM</p>
+    <h1>{{ item.title }}</h1>
+    <p class="muted">
+      {{ item.source_name or '未知来源' }} ·
+      {{ item.published_at.strftime('%Y-%m-%d %H:%M') if item.published_at else '时间未知' }} ·
+      <span class="status status-{{ item.status }}">{{ item.status }}</span>
+    </p>
+  </div>
+  <a class="btn btn-ghost" href="/news">返回新闻池</a>
+</section>
+
+<section class="grid two">
+  <div class="card">
+    <h2>描述</h2>
+    <p>{{ item.description or '无描述' }}</p>
+    {% if item.url %}
+    <a class="btn btn-secondary" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">打开原文</a>
+    {% endif %}
+  </div>
+  <div class="card">
+    <h2>入库信息</h2>
+    <dl class="kv">
+      <dt>启发式分</dt><dd>{{ item.heuristic_score }}</dd>
+      <dt>状态</dt><dd>{{ item.status }}</dd>
+      <dt>来源</dt><dd>{{ item.source_name or '未知' }}</dd>
+      <dt>抓取时间</dt><dd>{{ item.fetched_at.strftime('%Y-%m-%d %H:%M:%S') }}</dd>
+      <dt>原文链接</dt><dd><code>{{ item.url or '无' }}</code></dd>
+      <dt>SimHash</dt><dd><code>{{ item.simhash or '无' }}</code></dd>
+    </dl>
+    {% if cluster %}
+    <p class="hint">同一事件簇共 {{ cluster.member_count }} 条，代表新闻 ID {{ cluster.representative_news_id }}。</p>
+    {% endif %}
+  </div>
+</section>
+
+<section class="card">
+  <h2>分析</h2>
+  {% if analysis %}
+  <div class="usage-row">
+    <div><span class="muted">推送分</span><strong>{{ analysis.push_score }}</strong></div>
+    <div><span class="muted">方向</span><strong>{{ analysis.direction }}</strong></div>
+    <div><span class="muted">影响期</span><strong>{{ analysis.horizon }}</strong></div>
+    <div><span class="muted">资格</span><strong>{{ analysis.push_status }}</strong></div>
+  </div>
+  <dl class="kv">
+    <dt>事实摘要</dt><dd>{{ analysis.summary or '—' }}</dd>
+    <dt>可能传导</dt><dd>{{ analysis.transmission or '—' }}</dd>
+    <dt>关注点</dt><dd>{{ analysis.watch or '—' }}</dd>
+    <dt>不确定性</dt><dd>{{ analysis.caveat or '—' }}</dd>
+    <dt>评分</dt><dd>重要性 {{ analysis.materiality }} · 时效 {{ analysis.urgency }} · 置信度 {{ analysis.confidence }}</dd>
+    <dt>板块</dt><dd>{{ analysis.sectors_json|join('、') if analysis.sectors_json else '—' }}</dd>
+  </dl>
+  {% else %}
+  <p class="muted">还没有分析结果。等待 worker 批量处理。</p>
+  {% endif %}
+</section>
+{% endblock %}

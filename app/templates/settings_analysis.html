@@ -1,0 +1,252 @@
+{% extends "base.html" %}
+{% block title %}分析设置 · 财经宏观雷达{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">ANALYSIS</p>
+    <h1>分析频率与 token 预算</h1>
+    <p class="muted">保存后 worker 在 60 秒内重载，不需要重启。</p>
+  </div>
+</section>
+
+<section class="grid three">
+  <form method="post" action="/settings/analysis/preset" class="card preset-card">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="preset" value="saver">
+    <h2>节约</h2>
+    <p class="muted">每 4 小时 / 每天 4 次</p>
+    <p class="metric-inline">60k <span>输入</span> · 15k <span>输出</span></p>
+    <button class="btn btn-secondary btn-block" type="submit">切换节约</button>
+  </form>
+  <form method="post" action="/settings/analysis/preset" class="card preset-card">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="preset" value="balanced">
+    <h2>均衡 <span class="tag">当前默认</span></h2>
+    <p class="muted">每 2 小时 / 每天 8 次</p>
+    <p class="metric-inline">100k <span>输入</span> · 25k <span>输出</span></p>
+    <button class="btn btn-secondary btn-block" type="submit">切换均衡</button>
+  </form>
+  <form method="post" action="/settings/analysis/preset" class="card preset-card">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="preset" value="aggressive">
+    <h2>激进</h2>
+    <p class="muted">每 1 小时 / 每天 12 次</p>
+    <p class="metric-inline">200k <span>输入</span> · 50k <span>输出</span></p>
+    <button class="btn btn-secondary btn-block" type="submit">切换激进</button>
+  </form>
+  <form method="post" action="/settings/analysis/preset" class="card preset-card">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="preset" value="extreme">
+    <h2>极速 <span class="tag">5 分钟</span></h2>
+    <p class="muted">每 5 分钟 / 每天最多 288 次</p>
+    <p class="metric-inline">300k <span>输入</span> · 80k <span>输出</span></p>
+    <button class="btn btn-secondary btn-block" type="submit">切换极速</button>
+    <p class="hint">每 5 分钟检查；只要有 1 条候选就分析；费用上限仍会硬停。</p>
+  </form>
+</section>
+
+<form method="post" action="/settings/analysis" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+  <section class="card">
+    <div class="card-head">
+      <h2>天行数据</h2>
+      <span class="tag">新闻源</span>
+    </div>
+    <label>API Key
+      <input type="password" name="tianapi_key" placeholder="{{ tianapi_key_masked or '未配置，填写后保存' }}" autocomplete="off">
+    </label>
+    <p class="hint">留空表示不修改已保存的 Key。测试会请求 1 条财经新闻。</p>
+    <div class="row">
+      <button type="button" class="btn btn-secondary" onclick="testTianapi(this)">测试已保存的天行 Key</button>
+      <span class="test-result" id="tianapi-result"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>模型服务</h2>
+      <span class="tag">{{ analysis.provider }} · {{ analysis.model }}</span>
+    </div>
+    <div class="grid two">
+      <label>服务商
+        <select name="provider" id="llm-provider" onchange="applyProvider(this.value)">
+          <option value="deepseek" {% if analysis.provider == 'deepseek' %}selected{% endif %}>DeepSeek（默认，中文性价比高）</option>
+          <option value="openai" {% if analysis.provider == 'openai' %}selected{% endif %}>OpenAI</option>
+          <option value="moonshot" {% if analysis.provider == 'moonshot' %}selected{% endif %}>Moonshot / Kimi</option>
+          <option value="zhipu" {% if analysis.provider == 'zhipu' %}selected{% endif %}>智谱 GLM</option>
+          <option value="qwen" {% if analysis.provider == 'qwen' %}selected{% endif %}>阿里通义千问</option>
+          <option value="openrouter" {% if analysis.provider == 'openrouter' %}selected{% endif %}>OpenRouter（多模型聚合）</option>
+          <option value="siliconflow" {% if analysis.provider == 'siliconflow' %}selected{% endif %}>硅基流动</option>
+          <option value="ollama" {% if analysis.provider == 'ollama' %}selected{% endif %}>Ollama（本机模型）</option>
+          <option value="custom" {% if analysis.provider == 'custom' %}selected{% endif %}>自定义 OpenAI 兼容接口</option>
+        </select>
+      </label>
+      <label>模型名
+        <input type="text" name="model" id="llm-model" value="{{ analysis.model }}" placeholder="例如 deepseek-flash">
+      </label>
+    </div>
+    <label>Base URL
+      <input type="url" name="base_url" id="llm-base-url" value="{{ analysis.base_url }}" placeholder="https://api.deepseek.com">
+    </label>
+    <label>API Key
+      <input type="password" name="api_key" placeholder="{{ api_key_masked or '未配置，填写后保存' }}" autocomplete="off">
+    </label>
+    <p class="hint">留空表示不修改已保存的 Key。OpenAI 兼容接口均可；测试调用 <code>/models</code>。Ollama 本机地址可不填 Key。</p>
+    <div class="row">
+      <button type="button" class="btn btn-secondary" onclick="testDeepSeek(this)">测试已保存的 Key</button>
+      <span class="test-result" id="deepseek-result"></span>
+    </div>
+    <div class="grid two">
+      <label>输入价（元/百万 tokens）
+        <input type="number" name="input_price_cny" min="0" step="0.0001" value="{{ analysis.input_price_cny }}">
+      </label>
+      <label>输出价（元/百万 tokens）
+        <input type="number" name="output_price_cny" min="0" step="0.0001" value="{{ analysis.output_price_cny }}">
+      </label>
+    </div>
+    <p class="hint">
+      DeepSeek 自动按官方峰谷价计费，忽略这两个输入价；其他服务商按你填的单价估算。
+      常用入口：
+      <a href="https://api-docs.deepseek.com/zh-cn/quick_start/pricing/" target="_blank" rel="noopener">DeepSeek</a> ·
+      <a href="https://platform.openai.com/docs/pricing" target="_blank" rel="noopener">OpenAI</a> ·
+      <a href="https://platform.kimi.com/docs/pricing/chat" target="_blank" rel="noopener">Kimi</a> ·
+      <a href="https://docs.bigmodel.cn/cn/guide/start/pricing" target="_blank" rel="noopener">智谱</a> ·
+      <a href="https://help.aliyun.com/zh/model-studio/models" target="_blank" rel="noopener">通义</a> ·
+      <a href="https://openrouter.ai/models" target="_blank" rel="noopener">OpenRouter</a> ·
+      <a href="https://www.siliconflow.cn/pricing" target="_blank" rel="noopener">硅基流动</a>
+    </p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>调度</h2></div>
+    <div class="grid two">
+      <label>最小间隔（分钟）
+        <input type="number" name="min_interval_minutes" min="5" max="1440" value="{{ analysis.min_interval_minutes }}">
+      </label>
+      <label>每日最多运行
+        <input type="number" name="max_runs_per_day" min="1" max="288" value="{{ analysis.max_runs_per_day }}">
+      </label>
+      <label>每次批量
+        <input type="number" name="batch_size" min="1" max="20" value="{{ analysis.batch_size }}">
+      </label>
+      <label>每轮候选上限
+        <input type="number" name="max_candidates_per_run" min="1" max="50" value="{{ analysis.max_candidates_per_run }}">
+      </label>
+      <label>最少候选数
+        <input type="number" name="min_candidates" min="1" max="50" value="{{ analysis.min_candidates }}">
+      </label>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>费用与上限</h2>
+      <span class="tag tag-muted">今日 ¥{{ '%.4f'|format(cost_cny) }}</span>
+    </div>
+    <div class="usage-row">
+      <div><span class="muted">今日费用</span><strong>¥{{ '%.4f'|format(cost_cny) }}</strong></div>
+      <div><span class="muted">上限</span><strong>{{ '¥%.2f'|format(cost_limit) if cost_limit > 0 else '不限' }}</strong></div>
+      <div><span class="muted">已用</span><strong>{{ cost_percent }}%</strong></div>
+      <div><span class="muted">今日调用</span><strong>{{ usage.analysis_runs if usage else 0 }}</strong></div>
+    </div>
+    <label>每日费用上限（人民币，0 表示不限）
+      <input type="number" name="daily_cost_limit_cny" min="0" step="0.01" value="{{ analysis.daily_cost_limit_cny }}">
+    </label>
+    <p class="hint">
+      按 <strong>DeepSeek V4.1 Flash</strong> 官方人民币价（每百万 tokens）：
+      输入缓存命中 ¥0.02/¥0.04，缓存未命中 ¥1/¥2，输出 ¥4/¥8（空闲/高峰）。
+      高峰为北京时间周一至周五 09:00–12:00、14:00–18:00；节假日未单独识别，按高峰保守计算。
+    </p>
+    <p class="hint">达到上限后分析任务停止，并向微信推送一条提醒；次日 00:00 自动恢复。</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>预算与阈值</h2></div>
+    <div class="grid two">
+      <label>每日输入 token 预算
+        <input type="number" name="daily_input_token_budget" min="1000" value="{{ analysis.daily_input_token_budget }}">
+      </label>
+      <label>每日输出 token 预算
+        <input type="number" name="daily_output_token_budget" min="1000" value="{{ analysis.daily_output_token_budget }}">
+      </label>
+    </div>
+  </section>
+
+  <div class="actions">
+    <button class="btn btn-primary" type="submit">保存分析配置</button>
+    <span class="muted">当前版本 v{{ settings_version if settings_version is defined else '' }}</span>
+  </div>
+</form>
+
+<script>
+const LLM_PRESETS = {
+  deepseek: {base_url: 'https://api.deepseek.com', model: 'deepseek-flash'},
+  openai: {base_url: 'https://api.openai.com/v1', model: 'gpt-6-luna'},
+  moonshot: {base_url: 'https://api.moonshot.cn/v1', model: 'kimi-k3'},
+  zhipu: {base_url: 'https://open.bigmodel.cn/api/paas/v4', model: 'glm-4.7-flash'},
+  qwen: {base_url: 'https://dashscope.aliyuncs.com/compatible-mode/v1', model: 'qwen3.8-flash'},
+  openrouter: {base_url: 'https://openrouter.ai/api/v1', model: 'deepseek/deepseek-v4.1-flash-1017'},
+  siliconflow: {base_url: 'https://api.siliconflow.cn/v1', model: 'deepseek-ai/DeepSeek-V4.1-Flash'},
+  ollama: {base_url: 'http://127.0.0.1:11434/v1', model: 'qwen3:8b'},
+  custom: {base_url: '', model: ''}
+};
+function applyProvider(name) {
+  const preset = LLM_PRESETS[name];
+  if (!preset) return;
+  const base = document.getElementById('llm-base-url');
+  const model = document.getElementById('llm-model');
+  if (preset.base_url) base.value = preset.base_url;
+  if (preset.model) model.value = preset.model;
+}
+
+async function testTianapi(button) {
+  const result = document.getElementById('tianapi-result');
+  const csrf = document.querySelector('input[name="csrf"]').value;
+  const body = new URLSearchParams();
+  body.set('csrf', csrf);
+  result.textContent = '测试中…';
+  result.className = 'test-result pending';
+  button.disabled = true;
+  try {
+    const response = await fetch('/settings/analysis/test/tianapi', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body
+    });
+    const data = await response.json();
+    result.textContent = data.message || (data.ok ? '成功' : '失败');
+    result.className = 'test-result ' + (data.ok ? 'ok' : 'bad');
+  } catch (error) {
+    result.textContent = '请求失败：' + error;
+    result.className = 'test-result bad';
+  } finally {
+    button.disabled = false;
+  }
+}
+
+async function testDeepSeek(button) {
+  const result = document.getElementById('deepseek-result');
+  const csrf = document.querySelector('input[name="csrf"]').value;
+  const body = new URLSearchParams();
+  body.set('csrf', csrf);
+  result.textContent = '测试中…';
+  result.className = 'test-result pending';
+  button.disabled = true;
+  try {
+    const response = await fetch('/settings/analysis/test', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body
+    });
+    const data = await response.json();
+    result.textContent = data.message || (data.ok ? '成功' : '失败');
+    result.className = 'test-result ' + (data.ok ? 'ok' : 'bad');
+  } catch (error) {
+    result.textContent = '请求失败：' + error;
+    result.className = 'test-result bad';
+  } finally {
+    button.disabled = false;
+  }
+}
+</script>
+{% endblock %}

@@ -1,0 +1,45 @@
+<!doctype html>
+<html lang="zh-CN">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}财经宏观雷达{% endblock %}</title>
+  <link rel="stylesheet" href="{{ url_for('static', path='app.css') }}">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="{% if logged_in %}/{% else %}/setup{% endif %}">
+      <span class="brand-mark">NR</span>
+      <span>财经宏观雷达</span>
+    </a>
+    {% if logged_in %}
+    <nav class="nav">
+      <a href="/" class="{% if request.url.path == '/' %}active{% endif %}">仪表盘</a>
+      <a href="/news" class="{% if request.url.path.startswith('/news') %}active{% endif %}">新闻</a>
+      <a href="/analyses" class="{% if request.url.path.startswith('/analyses') %}active{% endif %}">分析</a>
+      <a href="/sources" class="{% if request.url.path.startswith('/sources') %}active{% endif %}">采集源</a>
+      <a href="/settings/analysis" class="{% if request.url.path.startswith('/settings/analysis') %}active{% endif %}">分析设置</a>
+      <a href="/settings/push" class="{% if request.url.path.startswith('/settings/push') %}active{% endif %}">推送设置</a>
+      <a href="/settings/security" class="{% if request.url.path.startswith('/settings/security') %}active{% endif %}">安全</a>
+      <a href="/logs" class="{% if request.url.path.startswith('/logs') %}active{% endif %}">日志</a>
+    </nav>
+    <form method="post" action="/logout" class="logout-form">
+      <input type="hidden" name="csrf" value="{{ csrf_token }}">
+      <button class="btn btn-ghost" type="submit">退出</button>
+    </form>
+    {% endif %}
+  </header>
+
+  <main class="container">
+    {% for item in flashes %}
+      <div class="flash flash-{{ item.kind }}">{{ item.message }}</div>
+    {% endfor %}
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer class="footer">
+    <span>newsradar v{{ version }}</span>
+    <span>本地局域网 · 不构成投资建议</span>
+  </footer>
+</body>
+</html>

@@ -1,0 +1,49 @@
+{% extends "base.html" %}
+{% block title %}分析历史 · 财经宏观雷达{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">ANALYSES</p>
+    <h1>分析历史</h1>
+    <p class="muted">共 {{ total }} 条 · 今日 {{ usage.analysis_runs if usage else 0 }} 次调用 · ¥{{ '%.4f'|format(usage.cost_cny if usage else 0) }}</p>
+  </div>
+</section>
+
+{% if rows %}
+<section class="news-list">
+  {% for analysis, item in rows %}
+  <article class="card news-card">
+    <div class="news-main">
+      <a class="news-title" href="/news/{{ item.id }}">{{ item.title }}</a>
+      <div class="news-meta">
+        <span>{{ item.source_name or '未知来源' }}</span>
+        <span>{{ item.published_at.strftime('%m-%d %H:%M') if item.published_at else '—' }}</span>
+        <span class="status status-{{ item.status }}">{{ item.status }}</span>
+        <span class="status status-{{ 'queued' if analysis.push_eligible else 'filtered' }}">{{ analysis.push_status }}</span>
+      </div>
+      {% if analysis.summary %}<p class="news-desc">{{ analysis.summary }}</p>{% endif %}
+      {% if analysis.transmission %}<p class="news-desc">影响：{{ analysis.transmission }}</p>{% endif %}
+    </div>
+    <div class="news-side">
+      <span class="score">{{ analysis.push_score }}</span>
+      <span class="muted">{{ analysis.direction }} · {{ analysis.horizon }}</span>
+      <span class="muted">M{{ analysis.materiality }} U{{ analysis.urgency }} C{{ analysis.confidence }}</span>
+    </div>
+  </article>
+  {% endfor %}
+</section>
+
+<nav class="pager">
+  {% if page > 1 %}<a class="btn btn-ghost" href="/analyses?page={{ page - 1 }}">上一页</a>{% endif %}
+  <span class="muted">第 {{ page }} / {{ pages }} 页</span>
+  {% if page < pages %}<a class="btn btn-ghost" href="/analyses?page={{ page + 1 }}">下一页</a>{% endif %}
+</nav>
+{% else %}
+<section class="card empty-state">
+  <div class="empty-icon">M3</div>
+  <h2>还没有分析结果</h2>
+  <p>有 3 条以上候选、且距上次分析满 2 小时后，worker 会自动批量分析。</p>
+  <a class="btn btn-secondary" href="/news?status=queued">看待分析新闻</a>
+</section>
+{% endif %}
+{% endblock %}

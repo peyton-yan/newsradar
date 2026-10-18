@@ -1,0 +1,115 @@
+{% extends "base.html" %}
+{% block title %}首次设置 · 财经宏观雷达{% endblock %}
+{% block content %}
+<section class="hero">
+  <p class="eyebrow">FIRST RUN</p>
+  <h1>先把雷达接上电</h1>
+  <p class="muted">这一步只保存在本机 SQLite 中。API Key 会加密，页面之后只显示末 4 位。</p>
+</section>
+
+<form method="post" action="/setup" class="stack" autocomplete="off">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+  <section class="card">
+    <div class="card-head">
+      <h2>1. 管理员密码</h2>
+      <span class="tag">必填</span>
+    </div>
+    <div class="grid two">
+      <label>管理员密码
+        <input type="password" name="admin_password" minlength="12" required autocomplete="new-password" placeholder="至少 12 位">
+      </label>
+      <label>再输一次
+        <input type="password" name="admin_password2" minlength="12" required autocomplete="new-password">
+      </label>
+    </div>
+    <p class="hint">登录用户名固定为 <code>admin</code>。密码只存 Argon2id 哈希。</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>2. 天行数据</h2>
+      <span class="tag tag-muted">可稍后填写</span>
+    </div>
+    <label>API Key
+      <input type="password" id="tianapi_key" name="tianapi_key" placeholder="天行数据 key" autocomplete="off">
+    </label>
+    <div class="row">
+      <button type="button" class="btn btn-secondary" onclick="testProvider('tianapi', this)">测试天行</button>
+      <span class="test-result" id="result-tianapi"></span>
+    </div>
+    <p class="hint">用于财经新闻与综合新闻采集，M2 才真正开始抓取。</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>3. DeepSeek</h2>
+      <span class="tag tag-muted">可稍后填写</span>
+    </div>
+    <label>API Key
+      <input type="password" id="deepseek_key" name="deepseek_key" placeholder="sk-..." autocomplete="off">
+    </label>
+    <div class="row">
+      <button type="button" class="btn btn-secondary" onclick="testProvider('deepseek', this)">测试 DeepSeek</button>
+      <span class="test-result" id="result-deepseek"></span>
+    </div>
+    <p class="hint">测试只调用 <code>/models</code>，不消耗生成 token。</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>4. WxPusher</h2>
+      <span class="tag">默认推送</span>
+    </div>
+    <label>appToken
+      <input type="password" id="wxpusher_app_token" name="wxpusher_app_token" placeholder="AT_..." autocomplete="off">
+    </label>
+    <label>UID <span class="muted">（可留空，测试时自动取第一个关注用户）</span>
+      <input type="text" id="wxpusher_uid" name="wxpusher_uid" placeholder="UID_..." autocomplete="off">
+    </label>
+    <div class="row">
+      <button type="button" class="btn btn-secondary" onclick="testProvider('wxpusher', this)">发送测试推送</button>
+      <span class="test-result" id="result-wxpusher"></span>
+    </div>
+    <p class="hint">这条会真的发到你的微信。每天最多 10 条的业务推送不受影响。</p>
+  </section>
+
+  <div class="actions">
+    <button class="btn btn-primary" type="submit">保存并进入仪表盘</button>
+    <span class="muted">保存后自动登录；可随时在“安全”页改密码。</span>
+  </div>
+</form>
+
+<script>
+async function testProvider(kind, button) {
+  const result = document.getElementById('result-' + kind);
+  const csrf = document.querySelector('input[name="csrf"]').value;
+  const body = new URLSearchParams();
+  body.set('csrf', csrf);
+  if (kind === 'tianapi') body.set('tianapi_key', document.getElementById('tianapi_key').value);
+  if (kind === 'deepseek') body.set('deepseek_key', document.getElementById('deepseek_key').value);
+  if (kind === 'wxpusher') {
+    body.set('wxpusher_app_token', document.getElementById('wxpusher_app_token').value);
+    body.set('wxpusher_uid', document.getElementById('wxpusher_uid').value);
+  }
+  result.textContent = '测试中…';
+  result.className = 'test-result pending';
+  button.disabled = true;
+  try {
+    const response = await fetch('/setup/test/' + kind, {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body
+    });
+    const data = await response.json();
+    result.textContent = data.message || (data.ok ? '成功' : '失败');
+    result.className = 'test-result ' + (data.ok ? 'ok' : 'bad');
+  } catch (error) {
+    result.textContent = '请求失败：' + error;
+    result.className = 'test-result bad';
+  } finally {
+    button.disabled = false;
+  }
+}
+</script>
+{% endblock %}

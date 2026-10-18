@@ -1,0 +1,131 @@
+{% extends "base.html" %}
+{% block title %}采集源 · 财经宏观雷达{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">SOURCES</p>
+    <h1>采集源</h1>
+    <p class="muted">天行财经为主源，综合新闻兜底；RSS 可自行添加官方源。</p>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>当前采集源</h2>
+    <span class="tag tag-muted">{{ sources|length }} 个</span>
+  </div>
+  <div class="table-wrap">
+    <table>
+      <thead>
+        <tr><th>名称</th><th>类型</th><th>状态</th><th>间隔</th><th>最近抓取</th><th>最近成功</th><th>操作</th></tr>
+      </thead>
+      <tbody>
+      {% for source in sources %}
+        <tr>
+          <td>
+            <strong>{{ source.name }}</strong>
+            <div class="muted source-path">
+              {% if source.kind == 'rss' %}{{ source.config_json.url if source.config_json else '' }}
+              {% else %}{{ source.config_json.path if source.config_json else '' }}{% if source.config_json and source.config_json.col %} · col={{ source.config_json.col }}{% endif %}{% endif %}
+            </div>
+            {% if source.last_error %}<div class="text-bad source-error">{{ source.last_error[:120] }}</div>{% endif %}
+          </td>
+          <td>{{ source.kind }}</td>
+          <td><span class="status {{ 'status-queued' if source.enabled else 'status-filtered' }}">{{ '启用' if source.enabled else '停用' }}</span></td>
+          <td>
+            <form method="post" action="/sources/{{ source.id }}/interval" class="inline-form compact-form">
+              <input type="hidden" name="csrf" value="{{ csrf_token }}">
+              <input type="number" name="interval_sec" min="30" max="86400" value="{{ source.interval_sec }}">
+              <button class="btn btn-ghost btn-small" type="submit">改</button>
+            </form>
+          </td>
+          <td>{{ source.last_polled_at.strftime('%m-%d %H:%M') if source.last_polled_at else '尚未' }}</td>
+          <td>{{ source.last_ok_at.strftime('%m-%d %H:%M') if source.last_ok_at else '—' }}</td>
+          <td>
+            <div class="row row-tight">
+              <form method="post" action="/sources/{{ source.id }}/test" class="inline-form">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                <button class="btn btn-secondary btn-small" type="submit">测试抓取</button>
+              </form>
+              <form method="post" action="/sources/{{ source.id }}/toggle" class="inline-form">
+                <input type="hidden" name="csrf" value="{{ csrf_token }}">
+                <input type="hidden" name="enabled" value="{{ '0' if source.enabled else '1' }}">
+                <button class="btn btn-ghost btn-small" type="submit">{{ '停用' if source.enabled else '启用' }}</button>
+              </form>
+            </div>
+          </td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  <p class="hint">“测试抓取”会真的拉取并写入新闻池，可用于验证 Key 和解析链路。</p>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>全球新闻 API</h2>
+    <span class="tag tag-muted">可选</span>
+  </div>
+  <p class="hint">天行覆盖中文财经；NewsAPI / GNews / Finnhub 补充海外宏观、地缘和英文财经。填 Key 后到上表启用对应源。</p>
+  <form method="post" action="/settings/sources/keys" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div class="grid three">
+      <label>NewsAPI Key
+        <input type="password" name="newsapi_key" placeholder="{{ newsapi_key_masked or '未配置' }}" autocomplete="off">
+      </label>
+      <label>GNews Key
+        <input type="password" name="gnews_key" placeholder="{{ gnews_key_masked or '未配置' }}" autocomplete="off">
+      </label>
+      <label>Finnhub Key
+        <input type="password" name="finnhub_key" placeholder="{{ finnhub_key_masked or '未配置' }}" autocomplete="off">
+      </label>
+    </div>
+    <div class="actions">
+      <button class="btn btn-secondary" type="submit">保存 Key</button>
+    </div>
+  </form>
+  <div class="help-grid">
+    <div><strong>天行数据</strong><p>中文财经/综合，国内宏观政策覆盖好；普通会员约 100 次/日，高级会员约 29 元/月（1 万次/日）。 <a href="https://www.tianapi.com/" target="_blank" rel="noopener">官网</a></p></div>
+    <div><strong>NewsAPI</strong><p>全球头条，免费 100 次/日仅限开发测试、有延迟；商业生产需付费，起价较高。 <a href="https://newsapi.org/pricing" target="_blank" rel="noopener">价格</a></p></div>
+    <div><strong>GNews</strong><p>全球多语言，免费 100 次/日、单次 10 篇、仅非商业；生产需付费。 <a href="https://gnews.io/pricing" target="_blank" rel="noopener">价格</a></p></div>
+    <div><strong>Finnhub</strong><p>全球市场/公司新闻，免费约 60 次/分钟；英文、美股为主。 <a href="https://finnhub.io/pricing" target="_blank" rel="noopener">价格</a></p></div>
+  </div>
+</section>
+
+<section class="card">
+  <div class="card-head">
+    <h2>添加 RSS 源</h2>
+    <span class="tag">通用</span>
+  </div>
+  <form method="post" action="/sources/rss" class="stack">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <div class="grid three">
+      <label>名称
+        <input type="text" name="name" placeholder="例如 中国人民银行" required>
+      </label>
+      <label>RSS 地址
+        <input type="url" name="url" placeholder="https://example.com/feed.xml" required>
+      </label>
+      <label>间隔（秒）
+        <input type="number" name="interval_sec" min="30" max="86400" value="600">
+      </label>
+    </div>
+    <div class="grid two">
+      <label>来源等级 0～20
+        <input type="number" name="tier" min="0" max="20" value="8">
+      </label>
+      <div class="actions">
+        <button class="btn btn-primary" type="submit">添加 RSS</button>
+        <span class="muted">默认拒绝内网/回环地址，防止 SSRF。</span>
+      </div>
+    </div>
+  </form>
+</section>
+
+<section class="card note-card">
+  <h2>天行额度</h2>
+  <p>高级会员 1 万次/天。默认财经 5 分钟、综合 10 分钟，合计约 432 次/天，余量充足。</p>
+  <p class="muted">天行 Key 在“分析设置”里填写；这里只管理采集源和频次。</p>
+</section>
+{% endblock %}

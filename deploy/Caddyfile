@@ -1,0 +1,5 @@
+# M1: LAN HTTP reverse proxy. Add a `tls internal` site later for HTTPS.
+:80 {
+	encode gzip
+	reverse_proxy 127.0.0.1:8080
+}

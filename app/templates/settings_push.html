@@ -1,0 +1,164 @@
+{% extends "base.html" %}
+{% block title %}推送设置 · 财经宏观雷达{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">PUSH</p>
+    <h1>怎么把消息送到微信</h1>
+    <p class="muted">当前默认 WxPusher；PushPlus 适配器已保留，后台可切换。</p>
+  </div>
+</section>
+
+<form method="post" action="/settings/push" class="stack">
+  <input type="hidden" name="csrf" value="{{ csrf_token }}">
+
+  <section class="card">
+    <div class="card-head">
+      <h2>渠道</h2>
+      <span class="tag">{{ push.provider }}</span>
+    </div>
+    <p class="hint">
+      推送服务负责把分析结果送到你手机。它不是“模型”，只负责最后一公里；
+      不同渠道的免费额度、是否需要关注公众号/装 APP 各不相同。
+    </p>
+    <div class="grid two">
+      <label>渠道
+        <select name="provider">
+          <option value="wxpusher" {% if push.provider == 'wxpusher' %}selected{% endif %}>WxPusher（默认，免费，需关注）</option>
+          <option value="pushplus" {% if push.provider == 'pushplus' %}selected{% endif %}>PushPlus（免费实名 200 条/日）</option>
+          <option value="serverchan" {% if push.provider == 'serverchan' %}selected{% endif %}>Server酱（免费/会员）</option>
+          <option value="wecom_bot" {% if push.provider == 'wecom_bot' %}selected{% endif %}>企业微信群机器人（免费）</option>
+        </select>
+      </label>
+      <label>WxPusher appToken
+        <input type="password" name="app_token" placeholder="{{ app_token_masked or 'AT_...' }}" autocomplete="off">
+      </label>
+      <label>WxPusher UID
+        <input type="text" name="uid" value="{{ provider_config.uid }}" placeholder="UID_...（留空则测试时自动取第一个关注用户）" autocomplete="off">
+      </label>
+      <label>PushPlus token
+        <input type="password" name="pushplus_token" placeholder="{{ provider_config.token or '未配置，填写后保存' }}" autocomplete="off">
+      </label>
+      <label>Server酱 SendKey
+        <input type="password" name="sendkey" placeholder="{{ provider_config.sendkey or 'SCT...' }}" autocomplete="off">
+      </label>
+      <label>企业微信机器人 Webhook
+        <input type="password" name="webhook" placeholder="{{ provider_config.webhook or 'https://qyapi.weixin.qq.com/cgi-bin/webhook/send?key=...' }}" autocomplete="off">
+      </label>
+    </div>
+    <p class="hint">只填当前渠道需要的字段；留空表示不修改已保存的值。</p>
+    <div class="row">
+      <button type="button" class="btn btn-secondary" onclick="testPush(this)">发送测试推送</button>
+      <span class="test-result" id="push-result"></span>
+    </div>
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>渠道怎么选</h2></div>
+    <div class="help-grid">
+      <div><strong>WxPusher</strong><p>免费；微信扫码关注后，消息经 ClawBot/APP 到达。适合个人自用。 <a href="https://wxpusher.zjiecode.com/" target="_blank" rel="noopener">官网/教程</a></p></div>
+      <div><strong>PushPlus</strong><p>实名后微信渠道约 200 条/日免费；会员约 10 元/月。 <a href="https://www.pushplus.plus/" target="_blank" rel="noopener">官网/教程</a></p></div>
+      <div><strong>Server酱</strong><p>老牌微信推送，免费额度有限，会员付费；配置一个 SendKey。 <a href="https://sct.ftqq.com/" target="_blank" rel="noopener">官网/教程</a></p></div>
+      <div><strong>企业微信机器人</strong><p>完全免费，消息发到企业微信群；适合小团队，不适合直接发给个人微信。 <a href="https://developer.work.weixin.qq.com/document/path/91770" target="_blank" rel="noopener">配置文档</a></p></div>
+    </div>
+    <p class="hint">产品化时可以把这张表和“为什么需要它”放在购买/首次配置页，减少用户困惑。</p>
+  </section>
+
+  <section class="card">
+    <div class="card-head">
+      <h2>即时推送</h2>
+      <span class="tag">不设定时</span>
+    </div>
+    <p class="hint">分析完成即推送，不再等待 08:00 / 12:30 / 21:30。每天有推送上限；剩余 5 条时会额外发一条额度提醒。</p>
+    <div class="grid two">
+      <label>每日推送上限
+        <input type="number" name="daily_push_limit" min="1" max="30" value="{{ push.daily_push_limit }}">
+      </label>
+      <label>每条消息最多新闻
+        <input type="number" name="max_items_per_digest" min="1" max="10" value="{{ push.max_items_per_digest }}">
+      </label>
+      <label>单条消息最大字符
+        <input type="number" name="max_chars_per_message" min="300" max="4000" value="{{ push.max_chars_per_message }}">
+      </label>
+    </div>
+    <input type="hidden" name="digest_times" value="{{ digest_times_text }}">
+    <input type="hidden" name="quiet_start" value="{{ quiet_start }}">
+    <input type="hidden" name="quiet_end" value="{{ quiet_end }}">
+  </section>
+
+  <section class="card">
+    <div class="card-head"><h2>推送门槛</h2></div>
+    <div class="grid two">
+      <label>最低置信度
+        <input type="number" name="min_confidence" min="0" max="100" value="{{ push.min_confidence }}">
+      </label>
+      <label>紧急阈值
+        <input type="number" name="urgent_threshold" min="0" max="100" value="{{ push.urgent_threshold }}">
+      </label>
+      <input type="hidden" name="quiet_urgent_threshold" value="{{ push.quiet_urgent_threshold }}">
+      <label class="checkline">
+        <input type="checkbox" name="include_disclaimer" value="1" {% if push.include_disclaimer %}checked{% endif %}>
+        消息末尾附加“AI 辅助整理，不构成投资建议”
+      </label>
+    </div>
+    <p class="hint">只按置信度放行：达到该值就推送，不再用重要性/推送分做硬门槛。默认 50；0 表示全部推送，不推荐。</p>
+  </section>
+
+  <div class="actions">
+    <button class="btn btn-primary" type="submit">保存推送配置</button>
+    <span class="muted">分析完成即推送；worker 每分钟检查一次，修改后 60 秒内生效。</span>
+  </div>
+</form>
+
+<section class="card">
+  <div class="card-head"><h2>推送历史</h2><span class="tag tag-muted">最近 20 条</span></div>
+  {% if push_history %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>时间</th><th>类型</th><th>标题</th><th>状态</th><th>尝试</th><th>错误</th></tr></thead>
+      <tbody>
+      {% for message in push_history %}
+      <tr>
+        <td>{{ message.created_at.strftime('%m-%d %H:%M') }}</td>
+        <td>{{ message.kind }}</td>
+        <td>{{ (message.title or '')[:40] }}</td>
+        <td><span class="status status-{{ 'queued' if message.status == 'sent' else 'filtered' }}">{{ message.status }}</span></td>
+        <td>{{ message.attempts }}</td>
+        <td class="muted">{{ (message.last_error or '')[:60] }}</td>
+      </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">还没有推送记录。分析出合格结果后会立即在这里显示。</p>
+  {% endif %}
+</section>
+
+<script>
+async function testPush(button) {
+  const result = document.getElementById('push-result');
+  const csrf = document.querySelector('input[name="csrf"]').value;
+  const body = new URLSearchParams();
+  body.set('csrf', csrf);
+  result.textContent = '发送中…';
+  result.className = 'test-result pending';
+  button.disabled = true;
+  try {
+    const response = await fetch('/settings/push/test', {
+      method: 'POST',
+      headers: {'Content-Type': 'application/x-www-form-urlencoded'},
+      body
+    });
+    const data = await response.json();
+    result.textContent = data.message || (data.ok ? '成功' : '失败');
+    result.className = 'test-result ' + (data.ok ? 'ok' : 'bad');
+  } catch (error) {
+    result.textContent = '请求失败：' + error;
+    result.className = 'test-result bad';
+  } finally {
+    button.disabled = false;
+  }
+}
+</script>
+{% endblock %}

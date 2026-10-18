@@ -1,0 +1,70 @@
+{% extends "base.html" %}
+{% block title %}新闻 · 财经宏观雷达{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">NEWS</p>
+    <h1>新闻池</h1>
+    <p class="muted">共 {{ total }} 条 · 只显示标题/描述，不存全文</p>
+  </div>
+</section>
+
+<form method="get" action="/news" class="card filter-bar">
+  <label>状态
+    <select name="status">
+      <option value="" {% if not status %}selected{% endif %}>全部</option>
+      <option value="queued" {% if status == 'queued' %}selected{% endif %}>待分析</option>
+      <option value="filtered" {% if status == 'filtered' %}selected{% endif %}>已过滤</option>
+      <option value="duplicate" {% if status == 'duplicate' %}selected{% endif %}>重复</option>
+      <option value="new" {% if status == 'new' %}selected{% endif %}>新入库</option>
+      <option value="analyzed" {% if status == 'analyzed' %}selected{% endif %}>已分析</option>
+    </select>
+  </label>
+  <label class="filter-grow">标题关键词
+    <input type="text" name="q" value="{{ q }}" placeholder="例如 央行、关税、降准">
+  </label>
+  <button class="btn btn-secondary" type="submit">筛选</button>
+  <a class="btn btn-ghost" href="/news">重置</a>
+</form>
+
+{% if items %}
+<section class="news-list">
+  {% for item in items %}
+  <article class="card news-card">
+    <div class="news-main">
+      <a class="news-title" href="/news/{{ item.id }}">{{ item.title }}</a>
+      <div class="news-meta">
+        <span>{{ item.source_name or '未知来源' }}</span>
+        <span>{{ item.published_at.strftime('%m-%d %H:%M') if item.published_at else '时间未知' }}</span>
+        <span class="status status-{{ item.status }}">{{ item.status }}</span>
+        {% if item.cluster_id and clusters.get(item.cluster_id) %}
+        <span>簇 {{ clusters[item.cluster_id].member_count }} 条</span>
+        {% endif %}
+      </div>
+      {% if item.description %}
+      <p class="news-desc">{{ item.description[:180] }}{% if item.description|length > 180 %}…{% endif %}</p>
+      {% endif %}
+    </div>
+    <div class="news-side">
+      <span class="score">{{ item.heuristic_score }}</span>
+      <span class="muted">启发式分</span>
+      {% if item.url %}<a class="btn btn-ghost btn-small" href="{{ item.url }}" target="_blank" rel="noopener noreferrer">原文</a>{% endif %}
+    </div>
+  </article>
+  {% endfor %}
+</section>
+
+<nav class="pager">
+  {% if page > 1 %}<a class="btn btn-ghost" href="/news?page={{ page - 1 }}&status={{ status }}&q={{ q }}">上一页</a>{% endif %}
+  <span class="muted">第 {{ page }} / {{ pages }} 页</span>
+  {% if page < pages %}<a class="btn btn-ghost" href="/news?page={{ page + 1 }}&status={{ status }}&q={{ q }}">下一页</a>{% endif %}
+</nav>
+{% else %}
+<section class="card empty-state">
+  <div class="empty-icon">M2</div>
+  <h2>新闻池还是空的</h2>
+  <p>先到“分析设置”填天行 Key，再在“采集源”点一次“测试抓取”；worker 也会按间隔自动采集。</p>
+  <a class="btn btn-secondary" href="/sources">去采集源</a>
+</section>
+{% endif %}
+{% endblock %}

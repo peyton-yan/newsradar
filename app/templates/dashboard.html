@@ -1,0 +1,170 @@
+{% extends "base.html" %}
+{% block title %}仪表盘 · 财经宏观雷达{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">DASHBOARD</p>
+    <h1>今天先看这几件事</h1>
+    <p class="muted">{{ status.now.strftime('%Y-%m-%d %H:%M') }} · Asia/Shanghai</p>
+  </div>
+  <form method="post" action="/pause" class="inline-form">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <input type="hidden" name="paused" value="{{ '0' if status.paused else '1' }}">
+    <button class="btn {{ 'btn-secondary' if status.paused else 'btn-danger' }}" type="submit">
+      {{ '恢复任务' if status.paused else '暂停全部' }}
+    </button>
+  </form>
+</section>
+
+{% if status.paused %}
+<div class="banner banner-warn">全部任务已暂停。采集、分析和推送都不会执行。</div>
+{% endif %}
+
+{% if not status.tianapi_configured or not status.deepseek_configured or not status.wxpusher_configured %}
+<div class="banner banner-warn">
+  还有配置没填：
+  {% if not status.tianapi_configured %}<a href="/settings/analysis">天行 Key</a>{% endif %}
+  {% if not status.deepseek_configured %}<a href="/settings/analysis">DeepSeek Key</a>{% endif %}
+  {% if not status.wxpusher_configured %}<a href="/settings/push">WxPusher</a>{% endif %}
+</div>
+{% endif %}
+
+<section class="grid four">
+  <div class="card metric">
+    <span class="metric-label">数据库</span>
+    <strong class="{{ 'text-ok' if status.db_ok else 'text-bad' }}">{{ '正常' if status.db_ok else '异常' }}</strong>
+    <span class="metric-note">{{ status.db_path }}</span>
+  </div>
+  <div class="card metric">
+    <span class="metric-label">Worker</span>
+    <strong class="{{ 'text-ok' if status.worker_alive else 'text-bad' }}">{{ '在线' if status.worker_alive else '未心跳' }}</strong>
+    <span class="metric-note">{{ status.beat_age ~ ' 秒前' if status.beat_age is not none else '尚未启动' }}</span>
+  </div>
+  <div class="card metric">
+    <span class="metric-label">磁盘剩余</span>
+    <strong>{{ status.disk_free_mb }} MB</strong>
+    <span class="metric-note">数据库 {{ status.db_size_mb }} MB</span>
+  </div>
+  <div class="card metric">
+    <span class="metric-label">今日推送</span>
+    <strong>{{ status.usage.pushes if status.usage else 0 }} / {{ status.push_limit }}</strong>
+    <span class="metric-note">配置版本 v{{ status.settings_version }}</span>
+  </div>
+</section>
+
+<section class="grid two">
+  <div class="card">
+    <div class="card-head">
+      <h2>今日费用与 token</h2>
+      <span class="tag">V4.1 Flash</span>
+    </div>
+    <div class="usage-row">
+      <div><span class="muted">费用</span><strong>¥{{ '%.4f'|format(status.cost_cny) }}</strong></div>
+      <div><span class="muted">上限</span><strong>{{ '¥%.2f'|format(status.cost_limit) if status.cost_limit > 0 else '不限' }}</strong></div>
+      <div><span class="muted">输入</span><strong>{{ status.usage.input_tokens if status.usage else 0 }}</strong></div>
+      <div><span class="muted">输出</span><strong>{{ status.usage.output_tokens if status.usage else 0 }}</strong></div>
+    </div>
+    <div class="progress"><span style="width: {{ status.cost_percent }}%"></span></div>
+    <p class="hint">
+      上限 {{ '¥%.2f'|format(status.cost_limit) if status.cost_limit > 0 else '不限' }}
+      · 已用 {{ status.cost_percent }}%
+      · token 预算 {{ status.input_budget }} / {{ status.output_budget }}
+      · <a href="/settings/analysis">调整</a>
+    </p>
+    {% if status.cost_limit > 0 and status.cost_percent >= 100 %}
+    <p class="text-bad">已达到今日费用上限，分析任务已停止；次日 00:00 自动恢复。</p>
+    {% elif status.cost_limit > 0 and status.cost_percent >= 80 %}
+    <p class="text-warn">今日费用已接近上限（{{ status.cost_percent }}%）。</p>
+    {% endif %}
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>新闻池</h2>
+      <span class="tag">M2 已接入</span>
+    </div>
+    <div class="usage-row">
+      <div><span class="muted">总数</span><strong>{{ status.total_news }}</strong></div>
+      <div><span class="muted">待分析</span><strong>{{ status.queued }}</strong></div>
+      <div><span class="muted">过滤</span><strong>{{ status.filtered }}</strong></div>
+      <div><span class="muted">重复</span><strong>{{ status.duplicates }}</strong></div>
+    </div>
+    <p class="hint">分析间隔 {{ status.min_interval }} 分钟、每天最多 {{ status.max_runs }} 次；<a href="/news">打开新闻池</a>。</p>
+  </div>
+</section>
+
+{% if status.latest_news %}
+<section class="card">
+  <div class="card-head">
+    <h2>最新入库</h2>
+    <a class="btn btn-ghost btn-small" href="/news">全部新闻</a>
+  </div>
+  <ul class="timeline">
+    {% for item in status.latest_news %}
+    <li>
+      <span class="timeline-time">{{ item.published_at.strftime('%m-%d %H:%M') if item.published_at else '—' }}</span>
+      <a href="/news/{{ item.id }}">{{ item.title }}</a>
+      <span class="status status-{{ item.status }}">{{ item.status }}</span>
+    </li>
+    {% endfor %}
+  </ul>
+</section>
+{% endif %}
+
+<section class="grid two">
+  <div class="card">
+    <div class="card-head">
+      <h2>推送</h2>
+      <span class="tag">{{ status.push_provider }}</span>
+    </div>
+    <dl class="kv">
+      <dt>WxPusher</dt><dd>{{ '已配置' if status.wxpusher_configured else '未配置' }}</dd>
+      <dt>UID</dt><dd>{{ status.wxpusher_uid or '测试时自动取第一个关注用户' }}</dd>
+      <dt>今日已发</dt><dd>{{ status.usage.pushes if status.usage else 0 }} 条</dd>
+    </dl>
+    <a class="btn btn-secondary" href="/settings/push">管理推送</a>
+  </div>
+
+  <div class="card">
+    <div class="card-head">
+      <h2>最近操作</h2>
+      <span class="tag tag-muted">审计日志</span>
+    </div>
+    {% if status.recent_audit %}
+    <ul class="timeline">
+      {% for log in status.recent_audit %}
+      <li>
+        <span class="timeline-time">{{ log.created_at.strftime('%m-%d %H:%M') }}</span>
+        <span>{{ log.action }}</span>
+        <span class="muted">{{ log.actor }}</span>
+      </li>
+      {% endfor %}
+    </ul>
+    {% else %}
+    <p class="muted">还没有操作记录。</p>
+    {% endif %}
+    <a class="btn btn-ghost" href="/logs">查看全部</a>
+  </div>
+</section>
+
+<section class="card note-card">
+  <h2>M1 状态</h2>
+  <p>采集、去重、DeepSeek 分析、即时推送和费用上限均已接通。下一步是备份、恢复演练和 24 小时 soak。</p>
+  <p class="muted">当前只把配置和审计写入数据库；不会抓新闻、不会调用 DeepSeek、不会自动推送。</p>
+</section>
+
+<script>
+setInterval(async () => {
+  try {
+    const response = await fetch('/api/status');
+    if (!response.ok) return;
+    const data = await response.json();
+    const el = document.getElementById('live-state');
+    if (el) el.textContent = data.worker_alive ? 'Worker 在线' : 'Worker 未心跳';
+  } catch (error) {
+    /* 页面下次刷新再处理 */
+  }
+}, 30000);
+</script>
+<span id="live-state" class="muted"></span>
+{% endblock %}

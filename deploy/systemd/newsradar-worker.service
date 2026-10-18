@@ -1,0 +1,25 @@
+[Unit]
+Description=NewsRadar Worker
+After=network-online.target
+Wants=network-online.target
+
+[Service]
+Type=simple
+User=newsradar
+Group=newsradar
+WorkingDirectory=/opt/newsradar
+EnvironmentFile=/etc/newsradar/newsradar.env
+Environment=PYTHONUNBUFFERED=1
+ExecStart=/opt/newsradar/.venv/bin/python -m app.worker
+Restart=always
+RestartSec=5
+UMask=0077
+NoNewPrivileges=true
+PrivateTmp=true
+ProtectSystem=strict
+ProtectHome=true
+ReadWritePaths=/var/lib/newsradar /var/backups/newsradar
+LimitNOFILE=4096
+
+[Install]
+WantedBy=multi-user.target

@@ -1,0 +1,46 @@
+{% extends "base.html" %}
+{% block title %}{{ title }} · 财经宏观雷达{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">{{ phase }}</p>
+    <h1>{{ title }}</h1>
+    <p class="muted">{{ description }}</p>
+  </div>
+</section>
+
+{% if audit_logs is defined %}
+<section class="card">
+  <div class="card-head">
+    <h2>审计日志</h2>
+    <span class="tag tag-muted">最近 100 条</span>
+  </div>
+  {% if audit_logs %}
+  <div class="table-wrap">
+    <table>
+      <thead><tr><th>时间</th><th>操作者</th><th>动作</th><th>目标</th></tr></thead>
+      <tbody>
+      {% for log in audit_logs %}
+        <tr>
+          <td>{{ log.created_at.strftime('%Y-%m-%d %H:%M:%S') }}</td>
+          <td>{{ log.actor }}</td>
+          <td>{{ log.action }}</td>
+          <td>{{ log.target or '' }}</td>
+        </tr>
+      {% endfor %}
+      </tbody>
+    </table>
+  </div>
+  {% else %}
+  <p class="muted">还没有审计记录。</p>
+  {% endif %}
+</section>
+{% else %}
+<section class="card empty-state">
+  <div class="empty-icon">{{ phase }}</div>
+  <h2>这一页还在路上</h2>
+  <p>{{ description }}</p>
+  <a class="btn btn-secondary" href="/">回仪表盘</a>
+</section>
+{% endif %}
+{% endblock %}

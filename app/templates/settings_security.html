@@ -1,0 +1,48 @@
+{% extends "base.html" %}
+{% block title %}安全 · 财经宏观雷达{% endblock %}
+{% block content %}
+<section class="page-head">
+  <div>
+    <p class="eyebrow">SECURITY</p>
+    <h1>密码与密钥</h1>
+    <p class="muted">后台只对局域网开放；API Key 以 Fernet 加密存储。</p>
+  </div>
+</section>
+
+<section class="grid two">
+  <form method="post" action="/settings/security/password" class="card stack">
+    <input type="hidden" name="csrf" value="{{ csrf_token }}">
+    <h2>修改管理员密码</h2>
+    <label>当前密码
+      <input type="password" name="current_password" required autocomplete="current-password">
+    </label>
+    <label>新密码
+      <input type="password" name="new_password" minlength="12" required autocomplete="new-password" placeholder="至少 12 位">
+    </label>
+    <label>再输一次
+      <input type="password" name="new_password2" minlength="12" required autocomplete="new-password">
+    </label>
+    <button class="btn btn-primary" type="submit">修改密码</button>
+  </form>
+
+  <div class="card">
+    <h2>本机文件</h2>
+    <dl class="kv">
+      <dt>数据库</dt><dd><code>{{ db_path }}</code></dd>
+      <dt>主密钥</dt><dd><code>{{ master_key_file }}</code></dd>
+      <dt>配置版本</dt><dd>v{{ settings_version }}</dd>
+    </dl>
+    <div class="banner banner-warn">
+      <strong>备份提醒：</strong>主密钥丢失后，数据库里的 API Key 无法解密，需要重新填写。
+      备份数据库时把 <code>master.key</code> 单独存到安全位置，不要放进普通数据库备份目录。
+    </div>
+    <p class="hint">修改主密钥的 CLI 在 M5 提供；现在请先备份。</p>
+  </div>
+</section>
+
+<section class="card">
+  <h2>访问方式</h2>
+  <p>应用只监听 <code>127.0.0.1:8080</code>，由 Caddy 在局域网反代；路由器不要做公网端口映射。</p>
+  <p class="muted">当前 M1 若通过 <code>http://192.168.2.112/</code> 访问，Cookie 未加 Secure；配置 HTTPS 后会自动更安全。</p>
+</section>
+{% endblock %}
