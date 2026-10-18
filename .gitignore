@@ -40,3 +40,6 @@ product-c/
 
 # 本地凭据
 .git-credentials
+
+# 构建产物，不提交
+artifacts/
