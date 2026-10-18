@@ -26,7 +26,7 @@ from app.settings_service import SettingsService
 
 
 logger = logging.getLogger("newsradar.analysis")
-PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "analysis_v3.md"
+PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "analysis_v4.md"
 DAY_FORMAT = "%Y-%m-%d"
 
 
@@ -225,7 +225,7 @@ class AnalysisService:
         model = str(self.settings.get("analysis.model", "deepseek-flash") or "deepseek-flash")
         base_url = str(self.settings.get("analysis.base_url", "https://api.deepseek.com"))
         api_key = str(self.settings.get("analysis.api_key", "") or "")
-        prompt_version = str(self.settings.get("analysis.prompt_version", "v3") or "v3")
+        prompt_version = str(self.settings.get("analysis.prompt_version", "v4") or "v4")
         max_tokens = int(self.settings.get("analysis.max_output_tokens", 4096) or 4096)
         timeout = int(self.settings.get("analysis.timeout_sec", 120) or 120)
         started = utcnow()
