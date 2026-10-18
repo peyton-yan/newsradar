@@ -548,7 +548,8 @@ analysis:
   max_chars_per_item: 500
   max_total_input_chars: 18000
   soft_stop_ratio: 0.9
-  prompt_version: v4
+  prompt_version: v5
+  prompt_extra: ""            # 管理员补充区，最多 2000 字；固定模板不可改
   flash:
     enabled: false
     min_interval_minutes: 30
@@ -720,7 +721,7 @@ class PushMessage:
 
 ## 10. 提示词与输出契约
 
-提示词放 `app/analysis/prompts/analysis_v4.md`，禁止散落在代码字符串里。修改提示词必须升版本号，旧分析不自动重跑。
+提示词放 `app/analysis/prompts/analysis_v5.md`，禁止散落在代码字符串里。管理员只能填写 `analysis.prompt_extra` 补充区（最多 2000 字），不得修改固定评分区间、JSON 字段、sectors 列表和输出格式。修改固定模板必须升版本号，旧分析不自动重跑。
 
 ### 10.1 System Prompt（稳定前缀，便于上下文缓存）
 
@@ -1134,7 +1135,7 @@ app/
     candidate.py
     service.py
   analysis/
-    prompts/analysis_v4.md
+    prompts/analysis_v5.md
     schema.py             # Pydantic 输出模型
     deepseek.py
     budget.py

@@ -80,7 +80,8 @@ DEFAULTS: dict[str, Any] = {
         "max_chars_per_item": 500,
         "max_total_input_chars": 18000,
         "soft_stop_ratio": 0.9,
-        "prompt_version": "v4",
+        "prompt_version": "v5",
+        "prompt_extra": "",
         "flash": {
             "enabled": False,
             "min_interval_minutes": 30,

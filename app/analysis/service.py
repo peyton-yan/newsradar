@@ -26,7 +26,7 @@ from app.settings_service import SettingsService
 
 
 logger = logging.getLogger("newsradar.analysis")
-PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "analysis_v4.md"
+PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "analysis_v5.md"
 DAY_FORMAT = "%Y-%m-%d"
 
 
@@ -50,12 +50,14 @@ class AnalysisService:
     def __init__(self, db: Database, settings: SettingsService):
         self.db = db
         self.settings = settings
-        self._system_prompt: str | None = None
+
+    def prompt_template_text(self) -> str:
+        return PROMPT_PATH.read_text(encoding="utf-8")
 
     def _system_prompt_text(self) -> str:
-        if self._system_prompt is None:
-            self._system_prompt = PROMPT_PATH.read_text(encoding="utf-8")
-        return self._system_prompt
+        template = self.prompt_template_text()
+        extra = str(self.settings.get("analysis.prompt_extra", "") or "").strip()
+        return template.replace("{{extra_instructions}}", extra or "（无）")
 
     def _usage(self, session) -> DailyUsage | None:
         return session.get(DailyUsage, _today())
@@ -225,7 +227,7 @@ class AnalysisService:
         model = str(self.settings.get("analysis.model", "deepseek-flash") or "deepseek-flash")
         base_url = str(self.settings.get("analysis.base_url", "https://api.deepseek.com"))
         api_key = str(self.settings.get("analysis.api_key", "") or "")
-        prompt_version = str(self.settings.get("analysis.prompt_version", "v4") or "v4")
+        prompt_version = str(self.settings.get("analysis.prompt_version", "v5") or "v5")
         max_tokens = int(self.settings.get("analysis.max_output_tokens", 4096) or 4096)
         timeout = int(self.settings.get("analysis.timeout_sec", 120) or 120)
         started = utcnow()

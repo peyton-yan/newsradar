@@ -62,6 +62,16 @@ def test_relevance_score_is_the_push_gate():
     assert parsed[0].relevance == 77
 
 
+def test_custom_prompt_extra_is_inserted_into_fixed_template(app):
+    settings = app.state.settings_service
+    settings.update_group("analysis", {"prompt_extra": "重点关注电力、煤炭和农业。"})
+    prompt = app.state.analysis._system_prompt_text()
+    assert "重点关注电力、煤炭和农业。" in prompt
+    assert "{{extra_instructions}}" not in prompt
+    assert "不得修改固定评分区间" in prompt
+    assert "只输出 JSON" in prompt
+
+
 def test_analysis_saves_results_and_respects_cost_cap(app, monkeypatch):
     settings = app.state.settings_service
     settings.update_group(

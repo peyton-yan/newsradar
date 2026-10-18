@@ -118,6 +118,19 @@
   </section>
 
   <section class="card">
+    <div class="card-head"><h2>提示词自定义</h2><span class="tag">固定规则 + 补充区</span></div>
+    <p class="hint">固定评分规则、JSON 字段、sectors 列表和输出格式不可修改。你只能填写下方补充区，它会被插入到提示词的指定位置；与固定规则冲突时，以固定规则为准。</p>
+    <label>补充分析要求（最多 2000 字，可留空）
+      <textarea name="prompt_extra" rows="7" maxlength="2000" placeholder="例如：重点关注电力、煤炭、农业等对天气敏感的板块；对多跳传导链写得更具体一些。">{{ analysis.prompt_extra or '' }}</textarea>
+    </label>
+    <p class="hint">适合写关注方向、传导链偏好、表达重点；不要在这里改 JSON 格式、评分区间或要求编造数据。</p>
+    <details>
+      <summary>查看固定提示词模板（只读）</summary>
+      <pre style="white-space:pre-wrap;max-height:360px;overflow:auto;font-size:12px;line-height:1.6;">{{ prompt_template }}</pre>
+    </details>
+  </section>
+
+  <section class="card">
     <div class="card-head"><h2>调度</h2></div>
     <div class="grid two">
       <label>最小间隔（分钟）

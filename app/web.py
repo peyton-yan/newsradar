@@ -641,6 +641,7 @@ def analysis_settings(request: Request):
             "analysis": group,
             "push": push_group,
             "candidate": settings.get_group("candidate"),
+            "prompt_template": request.app.state.analysis.prompt_template_text(),
             "usage": usage,
             "cost_limit": cost_limit,
             "cost_cny": cost_cny,
@@ -665,6 +666,7 @@ def analysis_settings_save(
     daily_output_token_budget: int = Form(25000),
     daily_cost_limit_cny: float = Form(2.0),
     candidate_min_score: int = Form(0),
+    prompt_extra: str = Form(""),
     provider: str = Form("deepseek"),
     base_url: str = Form("https://api.deepseek.com"),
     model: str = Form("deepseek-flash"),
@@ -715,6 +717,11 @@ def analysis_settings_save(
         errors.append("每日费用上限不能为负；0 表示不限制")
     if not 0 <= candidate_min_score <= 200:
         errors.append("候选分门槛需在 0～200；0 表示不过滤")
+    prompt_extra = prompt_extra.strip()
+    if len(prompt_extra) > 2000:
+        errors.append("提示词补充最多 2000 字")
+    if "\x00" in prompt_extra:
+        errors.append("提示词补充包含非法字符")
     if input_price_cny < 0 or output_price_cny < 0:
         errors.append("token 单价不能为负")
     if not 0 <= digest_threshold <= 100 or not 0 <= urgent_threshold <= 100:
@@ -736,6 +743,7 @@ def analysis_settings_save(
         "daily_input_token_budget": daily_input_token_budget,
         "daily_output_token_budget": daily_output_token_budget,
         "daily_cost_limit_cny": round(float(daily_cost_limit_cny), 2),
+        "prompt_extra": prompt_extra,
         "provider": provider,
         "base_url": base_url.rstrip("/"),
         "model": model.strip(),
