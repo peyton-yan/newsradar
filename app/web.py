@@ -396,7 +396,7 @@ def _dashboard_context(request: Request) -> dict[str, Any]:
         "cost_percent": min(100, round(cost_cny / cost_limit * 100, 1)) if cost_limit > 0 else 0,
         "cost_alert_sent": bool(getattr(usage, "cost_alert_sent", False)) if usage else False,
         "model": settings.get("analysis.model", "deepseek-flash"),
-        "push_limit": int(settings.get("push.daily_push_limit", 10) or 10),
+        "push_limit": int(settings.get("push.daily_push_limit", 0) or 0),
     }
 
 
@@ -902,7 +902,7 @@ def push_settings_save(
     quiet_urgent_threshold: int = Form(92),
     max_items_per_digest: int = Form(5),
     max_chars_per_message: int = Form(1200),
-    daily_push_limit: int = Form(10),
+    daily_push_limit: int = Form(0),
     include_disclaimer: bool = Form(False),
 ):
     redirect = require_login(request)
@@ -925,8 +925,8 @@ def push_settings_save(
         errors.append("置信度/紧急阈值需在 0～100")
     if urgent_threshold < min_confidence:
         errors.append("紧急阈值不能低于最低置信度")
-    if daily_push_limit < 1:
-        errors.append("每日推送上限至少为 1")
+    if daily_push_limit < 0:
+        errors.append("每日推送上限不能为负；0 表示不限")
     if max_items_per_digest < 1 or max_items_per_digest > 10:
         errors.append("每条摘要新闻数需在 1～10")
     if max_chars_per_message < 300 or max_chars_per_message > 4000:

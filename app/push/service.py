@@ -226,7 +226,9 @@ class PushService:
             )
 
     def _limit_reached(self) -> bool:
-        limit = int(self.settings.get("push.daily_push_limit", 10) or 10)
+        limit = int(self.settings.get("push.daily_push_limit", 0) or 0)
+        if limit <= 0:
+            return False
         return self._daily_push_count() >= limit
 
     def _message_exists(self, dedupe_key: str) -> bool:
@@ -348,7 +350,7 @@ class PushService:
         return result.ok
 
     def _maybe_quota_alert(self) -> None:
-        limit = int(self.settings.get("push.daily_push_limit", 10) or 10)
+        limit = int(self.settings.get("push.daily_push_limit", 0) or 0)
         if limit <= 0:
             return
         remaining = limit - self._daily_push_count()

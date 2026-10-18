@@ -69,10 +69,10 @@
       <h2>即时推送</h2>
       <span class="tag">不设定时</span>
     </div>
-    <p class="hint">分析完成即推送，不再等待 08:00 / 12:30 / 21:30。每天有推送上限；剩余 5 条时会额外发一条额度提醒。</p>
+    <p class="hint">分析完成即推送，不再等待 08:00 / 12:30 / 21:30。每日上限 0 表示不限；大于 0 时，剩余 5 条会额外发一条额度提醒。</p>
     <div class="grid two">
-      <label>每日推送上限
-        <input type="number" name="daily_push_limit" min="1" max="30" value="{{ push.daily_push_limit }}">
+      <label>每日推送上限（0=不限）
+        <input type="number" name="daily_push_limit" min="0" max="2000" value="{{ push.daily_push_limit }}">
       </label>
       <label>每条消息最多新闻
         <input type="number" name="max_items_per_digest" min="1" max="10" value="{{ push.max_items_per_digest }}">

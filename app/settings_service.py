@@ -104,7 +104,7 @@ DEFAULTS: dict[str, Any] = {
         "quiet_urgent_threshold": 92,
         "max_items_per_digest": 5,
         "max_chars_per_message": 1200,
-        "daily_push_limit": 10,
+        "daily_push_limit": 0,
         "retry_max": 3,
         "dedupe_cooldown_hours": 24,
         "include_disclaimer": True,

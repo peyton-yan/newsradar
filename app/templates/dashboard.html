@@ -47,7 +47,7 @@
   </div>
   <div class="card metric">
     <span class="metric-label">今日推送</span>
-    <strong>{{ status.usage.pushes if status.usage else 0 }} / {{ status.push_limit }}</strong>
+    <strong>{{ status.usage.pushes if status.usage else 0 }} / {{ status.push_limit if status.push_limit > 0 else '不限' }}</strong>
     <span class="metric-note">配置版本 v{{ status.settings_version }}</span>
   </div>
 </section>
