@@ -299,6 +299,7 @@ class IngestService:
         """
         positive = self.settings.get("candidate.positive_keywords", []) or POSITIVE_SEED
         negative = self.settings.get("candidate.negative_keywords", []) or NEGATIVE_SEED
+        min_score = int(self.settings.get("candidate.min_score", 0) or 0)
         queued = filtered = skipped = 0
         with self.db.session() as session:
             rows = session.execute(
@@ -318,8 +319,12 @@ class IngestService:
                     negative=negative,
                 )
                 item.heuristic_score = score
-                item.status = "queued"
-                queued += 1
+                keep = min_score <= 0 or score >= min_score
+                item.status = "queued" if keep else "filtered"
+                if keep:
+                    queued += 1
+                else:
+                    filtered += 1
         return {"queued": queued, "filtered": filtered, "skipped": skipped}
 
     def collect_due(self, *, force: bool = False) -> dict[str, Any]:
@@ -413,6 +418,7 @@ class IngestService:
         stats = {"new": 0, "duplicate": 0, "filtered": 0, "queued": 0}
         positive = self.settings.get("candidate.positive_keywords", []) or POSITIVE_SEED
         negative = self.settings.get("candidate.negative_keywords", []) or NEGATIVE_SEED
+        min_score = int(self.settings.get("candidate.min_score", 0) or 0)
         dedupe_hours = int(self.settings.get("candidate.dedupe_window_hours", 72) or 72)
         for fetched in items:
             try:
@@ -423,6 +429,7 @@ class IngestService:
                     fetched,
                     positive,
                     negative,
+                    min_score,
                     dedupe_hours,
                 )
                 if result in {"queued", "filtered"}:
@@ -444,6 +451,7 @@ class IngestService:
         fetched: FetchedNews,
         positive: list[str],
         negative: list[str],
+        min_score: int,
         dedupe_hours: int,
     ) -> str:
         now = utcnow()
@@ -563,10 +571,12 @@ class IngestService:
                 negative=negative,
             )
             item.heuristic_score = score
-            # Zero hard filter: score only decides processing order. The model
-            # and the confidence gate decide whether the item is worth pushing.
-            item.status = "queued"
-            return "queued"
+            # Default 0 means zero hard filter: all non-duplicate, non-expired
+            # items are analyzed. A positive threshold restores a cost-saving
+            # local filter, but that is an explicit user choice.
+            keep = min_score <= 0 or score >= min_score
+            item.status = "queued" if keep else "filtered"
+            return "queued" if keep else "filtered"
 
     @staticmethod
     def _attach_to_cluster(session, cluster_id: int | None, now: datetime) -> None:

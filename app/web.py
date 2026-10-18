@@ -640,6 +640,7 @@ def analysis_settings(request: Request):
         {
             "analysis": group,
             "push": push_group,
+            "candidate": settings.get_group("candidate"),
             "usage": usage,
             "cost_limit": cost_limit,
             "cost_cny": cost_cny,
@@ -663,6 +664,7 @@ def analysis_settings_save(
     daily_input_token_budget: int = Form(100000),
     daily_output_token_budget: int = Form(25000),
     daily_cost_limit_cny: float = Form(2.0),
+    candidate_min_score: int = Form(0),
     provider: str = Form("deepseek"),
     base_url: str = Form("https://api.deepseek.com"),
     model: str = Form("deepseek-flash"),
@@ -711,6 +713,8 @@ def analysis_settings_save(
         errors.append("模型名不能为空")
     if daily_cost_limit_cny < 0:
         errors.append("每日费用上限不能为负；0 表示不限制")
+    if not 0 <= candidate_min_score <= 200:
+        errors.append("候选分门槛需在 0～200；0 表示不过滤")
     if input_price_cny < 0 or output_price_cny < 0:
         errors.append("token 单价不能为负")
     if not 0 <= digest_threshold <= 100 or not 0 <= urgent_threshold <= 100:
@@ -745,6 +749,7 @@ def analysis_settings_save(
     if api_key.strip():
         updates["api_key"] = api_key.strip()
     settings.update_group("analysis", updates)
+    settings.update_group("candidate", {"min_score": candidate_min_score})
     settings.update_group("push", push_updates)
     if tianapi_key.strip():
         settings.update_group("tianapi", {"api_key": tianapi_key.strip()})

@@ -169,7 +169,11 @@
       <label>每日输出 token 预算
         <input type="number" name="daily_output_token_budget" min="1000" value="{{ analysis.daily_output_token_budget }}">
       </label>
+      <label>候选分门槛
+        <input type="number" name="candidate_min_score" min="0" max="200" value="{{ candidate.min_score }}">
+      </label>
     </div>
+    <p class="hint">候选分门槛：0 = 不过滤，所有非重复、未过期新闻都进入分析；大于 0 时低分候选不进入队列。分数只用于排序，不做语义判断。</p>
   </section>
 
   <div class="actions">
