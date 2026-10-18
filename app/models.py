@@ -88,7 +88,7 @@ class AnalysisBatch(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     status: Mapped[str] = mapped_column(String(24), nullable=False, default="running")
     model: Mapped[str] = mapped_column(String(80), nullable=False, default="deepseek-chat")
-    prompt_version: Mapped[str] = mapped_column(String(32), nullable=False, default="v1")
+    prompt_version: Mapped[str] = mapped_column(String(32), nullable=False, default="v2")
     item_count: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     input_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     output_tokens: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

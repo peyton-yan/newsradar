@@ -333,10 +333,11 @@ push_score = round(0.55 * materiality + 0.25 * urgency + 0.20 * confidence)
 **推送资格**：
 
 ```text
-confidence >= push.min_confidence (默认 50)
+macro_relevant = true
+AND confidence >= push.min_confidence (默认 50)
 ```
 
-只要置信度达到门槛就推送，不再要求 `macro_relevant`、`materiality` 或 `push_score`。重要性、推送分和宏观相关性只用于排序、筛选视图和“重要”标记；是否值得看交给用户判断。
+`macro_relevant` 是语义门槛：天文、体育、娱乐、明星、社会个案、普通天气等即使置信度很高也不推。`confidence` 只表示事实与传导链的确定性，不表示相关性；两者必须同时满足。重要性、推送分只用于排序、筛选视图和“重要”标记。
 
 紧急推送额外满足：
 
@@ -379,7 +380,7 @@ and confidence >= 50
 |---|---|---|
 | 推送时机 | 分析完成即推 | 不设定时摘要；每轮分析出的合格结果立即推送 |
 | 紧急阈值 | 85 | 达到时标题标“重要”；不再单独等待摘要 |
-| 最低置信度 | 50 | 置信度达到即推送；重要性/推送分不再做硬门槛 |
+| 最低置信度 | 50 | 仅对 `macro_relevant=true` 的新闻生效；相关性是前置门槛 |
 | 额度提醒 | 上限 >0 且剩余 5 条 | 每日推送上限只剩 5 条时，推一条系统提醒；0=不限，不提醒 |
 | 每条消息最多新闻 | 5 条 | 按分数降序；下一轮继续 |
 | 单条消息最大字符 | 1200 字 | 超长按条目边界拆分 |
@@ -548,7 +549,7 @@ analysis:
   max_chars_per_item: 500
   max_total_input_chars: 18000
   soft_stop_ratio: 0.9
-  prompt_version: v1
+  prompt_version: v2
   flash:
     enabled: false
     min_interval_minutes: 30
@@ -720,7 +721,7 @@ class PushMessage:
 
 ## 10. 提示词与输出契约
 
-提示词放 `app/analysis/prompts/analysis_v1.md`，禁止散落在代码字符串里。修改提示词必须升版本号，旧分析不自动重跑。
+提示词放 `app/analysis/prompts/analysis_v2.md`，禁止散落在代码字符串里。修改提示词必须升版本号，旧分析不自动重跑。
 
 ### 10.1 System Prompt（稳定前缀，便于上下文缓存）
 
@@ -1134,7 +1135,7 @@ app/
     candidate.py
     service.py
   analysis/
-    prompts/analysis_v1.md
+    prompts/analysis_v2.md
     schema.py             # Pydantic 输出模型
     deepseek.py
     budget.py

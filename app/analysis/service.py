@@ -18,7 +18,7 @@ from app.analysis.billing import (
     is_peak,
 )
 from app.analysis.deepseek import DeepSeekError, chat_completion
-from app.analysis.schema import parse_items, push_score
+from app.analysis.schema import is_push_eligible, parse_items, push_score
 from app.db import Database, utcnow
 from app.models import Analysis, AnalysisBatch, DailyUsage, NewsCluster, NewsItem
 from app.push.system import send_system_alert
@@ -26,7 +26,7 @@ from app.settings_service import SettingsService
 
 
 logger = logging.getLogger("newsradar.analysis")
-PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "analysis_v1.md"
+PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "analysis_v2.md"
 DAY_FORMAT = "%Y-%m-%d"
 
 
@@ -225,7 +225,7 @@ class AnalysisService:
         model = str(self.settings.get("analysis.model", "deepseek-flash") or "deepseek-flash")
         base_url = str(self.settings.get("analysis.base_url", "https://api.deepseek.com"))
         api_key = str(self.settings.get("analysis.api_key", "") or "")
-        prompt_version = str(self.settings.get("analysis.prompt_version", "v1") or "v1")
+        prompt_version = str(self.settings.get("analysis.prompt_version", "v2") or "v2")
         max_tokens = int(self.settings.get("analysis.max_output_tokens", 4096) or 4096)
         timeout = int(self.settings.get("analysis.timeout_sec", 120) or 120)
         started = utcnow()
@@ -333,10 +333,10 @@ class AnalysisService:
                 if item is None:
                     continue
                 score = push_score(result)
-                # Keep the human in the loop: confidence is the only hard gate.
-                # Low-importance but clear news can still be worth a look; the
-                # user decides. This intentionally does not require macro_relevant.
-                eligible = result.confidence >= min_confidence
+                # Confidence only says how certain the facts/transmission are.
+                # A clear astronomy or sports story is still irrelevant. Require
+                # the model's semantic macro-relevance flag before confidence.
+                eligible = is_push_eligible(result, min_confidence)
                 analysis = session.scalar(
                     select(Analysis).where(Analysis.news_id == item.id).limit(1)
                 )

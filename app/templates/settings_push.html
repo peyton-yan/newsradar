@@ -89,7 +89,7 @@
   <section class="card">
     <div class="card-head"><h2>推送门槛</h2></div>
     <div class="grid two">
-      <label>最低置信度
+      <label>最低置信度（事实确定性）
         <input type="number" name="min_confidence" min="0" max="100" value="{{ push.min_confidence }}">
       </label>
       <label>紧急阈值
@@ -101,7 +101,7 @@
         消息末尾附加“AI 辅助整理，不构成投资建议”
       </label>
     </div>
-    <p class="hint">置信度只决定“推不推”：达到该值就推送，默认 50，0 表示全部推送。推送顺序另看分数，分数不决定是否推送。</p>
+    <p class="hint">置信度只表示事实与传导链有多确定，不等于“和A股有关”。只有模型判定与A股宏观相关、且置信度达到该值才推送；天文、体育、娱乐、社会个案、普通天气等即使置信度很高也不推。默认 50，0 表示对相关新闻不设置信度门槛。</p>
   </section>
 
   <div class="actions">

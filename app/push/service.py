@@ -404,6 +404,7 @@ class PushService:
                 .where(
                     Analysis.push_status == "pending",
                     Analysis.push_eligible.is_(True),
+                    Analysis.macro_relevant.is_(True),
                     Analysis.push_score >= urgent,
                     Analysis.materiality >= 70,
                     Analysis.confidence >= 50,
@@ -499,7 +500,11 @@ class PushService:
             rows = session.execute(
                 select(Analysis, NewsItem)
                 .join(NewsItem, NewsItem.id == Analysis.news_id)
-                .where(Analysis.push_status == "pending", Analysis.push_eligible.is_(True))
+                .where(
+                    Analysis.push_status == "pending",
+                    Analysis.push_eligible.is_(True),
+                    Analysis.macro_relevant.is_(True),
+                )
                 .order_by(Analysis.push_score.desc(), Analysis.created_at, Analysis.id)
                 .limit(max(1, limit))
             ).all()
@@ -545,6 +550,7 @@ class PushService:
                 .where(
                     Analysis.push_status == "pending",
                     Analysis.push_eligible.is_(True),
+                    Analysis.macro_relevant.is_(True),
                     Analysis.created_at >= since,
                 )
                 .order_by(Analysis.push_score.desc(), Analysis.id)

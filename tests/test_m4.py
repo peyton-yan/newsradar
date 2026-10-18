@@ -9,7 +9,7 @@ from app.models import Analysis, NewsItem, PushMessage
 from app.push.service import PushResult
 
 
-def _seed_analysis(app, *, score: int, materiality: int = 80, confidence: int = 80):
+def _seed_analysis(app, *, score: int, materiality: int = 80, confidence: int = 80, macro_relevant: bool = True):
     now = utcnow()
     with app.state.db.session() as session:
         item = NewsItem(
@@ -31,7 +31,7 @@ def _seed_analysis(app, *, score: int, materiality: int = 80, confidence: int = 
         session.flush()
         analysis = Analysis(
             news_id=item.id,
-            macro_relevant=True,
+            macro_relevant=macro_relevant,
             materiality=materiality,
             urgency=80,
             confidence=confidence,
@@ -97,6 +97,18 @@ def test_immediate_push_and_quota_warning(app, monkeypatch):
         assert messages[0].kind == "immediate"
         assert messages[1].kind == "system"
         assert "还剩 5 条" in (messages[1].body_plain or "")
+
+
+def test_immediate_push_skips_irrelevant(app, monkeypatch):
+    _configure_push(app, monkeypatch, PushResult(True, provider_msg_id="skip"))
+    analysis_id = _seed_analysis(
+        app, score=90, materiality=90, confidence=99, macro_relevant=False
+    )
+    assert app.state.push.send_immediate() == 0
+    with app.state.db.session() as session:
+        analysis = session.get(Analysis, analysis_id)
+        assert analysis is not None
+        assert analysis.push_status == "pending"
 
 
 def test_urgent_push_is_sent_once(app, monkeypatch):

@@ -6,7 +6,7 @@ from datetime import datetime, timezone
 from sqlalchemy import select
 
 from app.analysis.billing import compute_cost_cny, is_peak
-from app.analysis.schema import parse_items, push_score
+from app.analysis.schema import AnalysisItem, is_push_eligible, parse_items, push_score
 from app.db import utcnow
 from app.models import Analysis, DailyUsage, NewsCluster, NewsItem, Source
 
@@ -46,6 +46,22 @@ def test_parse_items_clamps_and_filters():
     assert item.urgency == 0
     assert item.sectors == ["银行"]
     assert push_score(item) == round(0.55 * 100 + 0.25 * 0 + 0.20 * 80)
+
+
+def test_macro_relevance_is_required_before_confidence():
+    irrelevant = AnalysisItem(news_id="1", macro_relevant=False, confidence=99)
+    assert is_push_eligible(irrelevant, 60) is False
+
+    uncertain = AnalysisItem(news_id="2", macro_relevant=True, confidence=59)
+    assert is_push_eligible(uncertain, 60) is False
+
+    relevant = AnalysisItem(news_id="3", macro_relevant=True, confidence=60)
+    assert is_push_eligible(relevant, 60) is True
+
+    string_false = parse_items(
+        '{"items":[{"news_id":"4","macro_relevant":"false","confidence":99}]}', {"4"}
+    )
+    assert string_false[0].macro_relevant is False
 
 
 def test_analysis_saves_results_and_respects_cost_cap(app, monkeypatch):

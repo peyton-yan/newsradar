@@ -63,6 +63,16 @@ def push_score(item: AnalysisItem) -> int:
     return round(0.55 * item.materiality + 0.25 * item.urgency + 0.20 * item.confidence)
 
 
+def is_push_eligible(item: AnalysisItem, min_confidence: int) -> bool:
+    """Confidence is certainty, not relevance.
+
+    A clear astronomy/sports/entertainment story can have confidence 90 and
+    still be completely irrelevant to A-share macro. The model's
+    macro_relevant flag is the semantic gate; confidence is the certainty gate.
+    """
+    return bool(item.macro_relevant) and item.confidence >= min_confidence
+
+
 def _clamp(value: Any, default: int = 0) -> int:
     try:
         return max(0, min(100, int(value)))
@@ -74,6 +84,12 @@ def _text(value: Any, limit: int) -> str:
     if not isinstance(value, str):
         return ""
     return value.strip()[:limit]
+
+
+def _bool(value: Any) -> bool:
+    if isinstance(value, str):
+        return value.strip().lower() in {"true", "1", "yes", "y"}
+    return bool(value)
 
 
 def _clean(raw: dict[str, Any], expected: set[str]) -> AnalysisItem | None:
@@ -93,7 +109,7 @@ def _clean(raw: dict[str, Any], expected: set[str]) -> AnalysisItem | None:
                 break
     return AnalysisItem(
         news_id=news_id,
-        macro_relevant=bool(raw.get("macro_relevant", False)),
+        macro_relevant=_bool(raw.get("macro_relevant", False)),
         materiality=_clamp(raw.get("materiality")),
         urgency=_clamp(raw.get("urgency")),
         confidence=_clamp(raw.get("confidence")),
