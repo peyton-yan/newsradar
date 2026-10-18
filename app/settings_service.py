@@ -68,7 +68,7 @@ DEFAULTS: dict[str, Any] = {
         "max_output_tokens": 4096,
         "timeout_sec": 120,
         "min_interval_minutes": 120,
-        "max_runs_per_day": 8,
+        "max_runs_per_day": 0,
         "batch_size": 12,
         "max_candidates_per_run": 20,
         "min_candidates": 1,

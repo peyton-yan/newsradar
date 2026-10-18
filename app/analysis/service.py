@@ -159,8 +159,8 @@ class AnalysisService:
         with self.db.session() as session:
             usage = self._usage(session)
             runs = int(usage.analysis_runs or 0) if usage else 0
-            max_runs = int(self.settings.get("analysis.max_runs_per_day", 8) or 8)
-            if runs >= max_runs:
+            max_runs = int(self.settings.get("analysis.max_runs_per_day", 0) or 0)
+            if max_runs > 0 and runs >= max_runs:
                 return False, "max_runs"
             input_tokens = int(usage.input_tokens or 0) if usage else 0
             output_tokens = int(usage.output_tokens or 0) if usage else 0

@@ -14,7 +14,7 @@
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="preset" value="saver">
     <h2>节约</h2>
-    <p class="muted">每 4 小时 / 每天 4 次</p>
+    <p class="muted">每 4 小时 / 不限批次</p>
     <p class="metric-inline">60k <span>输入</span> · 15k <span>输出</span></p>
     <button class="btn btn-secondary btn-block" type="submit">切换节约</button>
   </form>
@@ -22,7 +22,7 @@
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="preset" value="balanced">
     <h2>均衡 <span class="tag">当前默认</span></h2>
-    <p class="muted">每 2 小时 / 每天 8 次</p>
+    <p class="muted">每 2 小时 / 不限批次</p>
     <p class="metric-inline">100k <span>输入</span> · 25k <span>输出</span></p>
     <button class="btn btn-secondary btn-block" type="submit">切换均衡</button>
   </form>
@@ -30,7 +30,7 @@
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="preset" value="aggressive">
     <h2>激进</h2>
-    <p class="muted">每 1 小时 / 每天 12 次</p>
+    <p class="muted">每 1 小时 / 不限批次</p>
     <p class="metric-inline">200k <span>输入</span> · 50k <span>输出</span></p>
     <button class="btn btn-secondary btn-block" type="submit">切换激进</button>
   </form>
@@ -38,7 +38,7 @@
     <input type="hidden" name="csrf" value="{{ csrf_token }}">
     <input type="hidden" name="preset" value="extreme">
     <h2>极速 <span class="tag">5 分钟</span></h2>
-    <p class="muted">每 5 分钟 / 每天最多 288 次</p>
+    <p class="muted">每 5 分钟 / 不限批次</p>
     <p class="metric-inline">300k <span>输入</span> · 80k <span>输出</span></p>
     <button class="btn btn-secondary btn-block" type="submit">切换极速</button>
     <p class="hint">每 5 分钟检查；只要有 1 条候选就分析；费用上限仍会硬停。</p>
@@ -137,7 +137,8 @@
         <input type="number" name="min_interval_minutes" min="5" max="1440" value="{{ analysis.min_interval_minutes }}">
       </label>
       <label>每日最多运行
-        <input type="number" name="max_runs_per_day" min="1" max="288" value="{{ analysis.max_runs_per_day }}">
+        <input type="number" name="max_runs_per_day" min="0" max="288" value="{{ analysis.max_runs_per_day }}">
+        <span class="hint">0 = 不限；只受每日费用和 token 预算约束</span>
       </label>
       <label>每次批量
         <input type="number" name="batch_size" min="1" max="20" value="{{ analysis.batch_size }}">

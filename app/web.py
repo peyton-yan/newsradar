@@ -658,7 +658,7 @@ def analysis_settings_save(
     request: Request,
     csrf: str = Form(""),
     min_interval_minutes: int = Form(120),
-    max_runs_per_day: int = Form(8),
+    max_runs_per_day: int = Form(0),
     batch_size: int = Form(12),
     max_candidates_per_run: int = Form(20),
     min_candidates: int = Form(1),
@@ -684,8 +684,8 @@ def analysis_settings_save(
     errors: list[str] = []
     if not 5 <= min_interval_minutes <= 1440:
         errors.append("最小间隔需在 5～1440 分钟")
-    if not 1 <= max_runs_per_day <= 288:
-        errors.append("每日次数需在 1～288")
+    if not 0 <= max_runs_per_day <= 288:
+        errors.append("每日次数需在 0～288；0 表示不限")
     if not 1 <= batch_size <= 20:
         errors.append("批量需在 1～20")
     if not 1 <= max_candidates_per_run <= 50:
@@ -780,7 +780,7 @@ def analysis_preset(request: Request, csrf: str = Form(""), preset: str = Form("
     presets: dict[str, dict[str, int]] = {
         "saver": {
             "min_interval_minutes": 240,
-            "max_runs_per_day": 4,
+            "max_runs_per_day": 0,
             "batch_size": 8,
             "min_candidates": 1,
             "max_candidates_per_run": 20,
@@ -789,7 +789,7 @@ def analysis_preset(request: Request, csrf: str = Form(""), preset: str = Form("
         },
         "balanced": {
             "min_interval_minutes": 120,
-            "max_runs_per_day": 8,
+            "max_runs_per_day": 0,
             "batch_size": 12,
             "min_candidates": 1,
             "max_candidates_per_run": 20,
@@ -798,7 +798,7 @@ def analysis_preset(request: Request, csrf: str = Form(""), preset: str = Form("
         },
         "aggressive": {
             "min_interval_minutes": 60,
-            "max_runs_per_day": 12,
+            "max_runs_per_day": 0,
             "batch_size": 15,
             "min_candidates": 1,
             "max_candidates_per_run": 20,
@@ -807,7 +807,7 @@ def analysis_preset(request: Request, csrf: str = Form(""), preset: str = Form("
         },
         "extreme": {
             "min_interval_minutes": 5,
-            "max_runs_per_day": 288,
+            "max_runs_per_day": 0,
             "batch_size": 20,
             "min_candidates": 1,
             "max_candidates_per_run": 20,
