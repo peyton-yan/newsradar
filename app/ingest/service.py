@@ -11,7 +11,7 @@ from sqlalchemy import or_, select
 from sqlalchemy.exc import IntegrityError
 
 from app.db import Database, utcnow
-from app.ingest.candidate import NEGATIVE_SEED, POSITIVE_SEED, rescue_hits, score_text
+from app.ingest.candidate import NEGATIVE_SEED, POSITIVE_SEED, score_text
 from app.ingest.normalize import (
     canonicalize_url,
     clean_html,
@@ -291,10 +291,14 @@ class IngestService:
         return stats
 
     def rescore_all(self) -> dict[str, int]:
-        """Recompute scores after a scoring-rule change; duplicates stay duplicates."""
+        """Recompute scores after a scoring-rule change; duplicates stay duplicates.
+
+        The score is a ranking signal only. Every non-duplicate, non-expired item
+        stays in the analysis queue; semantic filtering happens in the model and
+        in the confidence gate, not here.
+        """
         positive = self.settings.get("candidate.positive_keywords", []) or POSITIVE_SEED
         negative = self.settings.get("candidate.negative_keywords", []) or NEGATIVE_SEED
-        min_score = int(self.settings.get("candidate.min_score", 25) or 25)
         queued = filtered = skipped = 0
         with self.db.session() as session:
             rows = session.execute(
@@ -304,7 +308,7 @@ class IngestService:
                 if item.status in {"duplicate", "analyzed", "expired"}:
                     skipped += 1
                     continue
-                score, _, neg_hits = score_text(
+                score, _, _ = score_text(
                     item.title,
                     item.description,
                     int(tier or 3),
@@ -314,12 +318,8 @@ class IngestService:
                     negative=negative,
                 )
                 item.heuristic_score = score
-                rescued = bool(rescue_hits(item.title, item.description)) and not neg_hits
-                item.status = "queued" if score >= min_score or rescued else "filtered"
-                if item.status == "queued":
-                    queued += 1
-                else:
-                    filtered += 1
+                item.status = "queued"
+                queued += 1
         return {"queued": queued, "filtered": filtered, "skipped": skipped}
 
     def collect_due(self, *, force: bool = False) -> dict[str, Any]:
@@ -413,7 +413,6 @@ class IngestService:
         stats = {"new": 0, "duplicate": 0, "filtered": 0, "queued": 0}
         positive = self.settings.get("candidate.positive_keywords", []) or POSITIVE_SEED
         negative = self.settings.get("candidate.negative_keywords", []) or NEGATIVE_SEED
-        min_score = int(self.settings.get("candidate.min_score", 25) or 25)
         dedupe_hours = int(self.settings.get("candidate.dedupe_window_hours", 72) or 72)
         for fetched in items:
             try:
@@ -424,7 +423,6 @@ class IngestService:
                     fetched,
                     positive,
                     negative,
-                    min_score,
                     dedupe_hours,
                 )
                 if result in {"queued", "filtered"}:
@@ -446,7 +444,6 @@ class IngestService:
         fetched: FetchedNews,
         positive: list[str],
         negative: list[str],
-        min_score: int,
         dedupe_hours: int,
     ) -> str:
         now = utcnow()
@@ -556,7 +553,7 @@ class IngestService:
             session.add(cluster)
             session.flush()
             item.cluster_id = cluster.id
-            score, _, neg_hits = score_text(
+            score, _, _ = score_text(
                 title,
                 description,
                 tier,
@@ -566,9 +563,10 @@ class IngestService:
                 negative=negative,
             )
             item.heuristic_score = score
-            rescued = bool(rescue_hits(title, description)) and not neg_hits
-            item.status = "queued" if score >= min_score or rescued else "filtered"
-            return "queued" if item.status == "queued" else "filtered"
+            # Zero hard filter: score only decides processing order. The model
+            # and the confidence gate decide whether the item is worth pushing.
+            item.status = "queued"
+            return "queued"
 
     @staticmethod
     def _attach_to_cluster(session, cluster_id: int | None, now: datetime) -> None:

@@ -65,8 +65,8 @@ def test_collect_dedupes_and_queues(app, monkeypatch):
     assert result["fetched"] == 3
     assert result["new"] == 2
     assert result["duplicate"] == 1
-    assert result["queued"] == 1
-    assert result["filtered"] == 1
+    assert result["queued"] == 2
+    assert result["filtered"] == 0
 
     with app.state.db.session() as session:
         news = list(session.scalars(select(NewsItem).order_by(NewsItem.id)).all())
@@ -77,7 +77,7 @@ def test_collect_dedupes_and_queues(app, monkeypatch):
         assert cluster.member_count == 2
         assert news[0].status == "queued"
         assert news[1].status == "duplicate"
-        assert news[2].status == "filtered"
+        assert news[2].status == "queued"
         assert news[0].simhash_band0 is not None
 
     again = ingest.collect_source(source_id)

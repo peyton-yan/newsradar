@@ -110,7 +110,7 @@ DEFAULTS: dict[str, Any] = {
         "include_disclaimer": True,
     },
     "candidate": {
-        "min_score": 25,
+        "min_score": 0,
         "max_age_hours": 48,
         "dedupe_window_hours": 72,
         "simhash_hamming": 3,
