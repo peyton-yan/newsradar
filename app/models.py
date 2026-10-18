@@ -111,7 +111,9 @@ class Analysis(Base):
     news_id: Mapped[int] = mapped_column(Integer, nullable=False, unique=True, index=True)
     cluster_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
     batch_id: Mapped[int | None] = mapped_column(Integer, nullable=True, index=True)
+    # Kept for old rows/schema compatibility; new analyses use relevance.
     macro_relevant: Mapped[bool] = mapped_column(Boolean, nullable=False, default=False)
+    relevance: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     materiality: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     urgency: Mapped[int] = mapped_column(Integer, nullable=False, default=0)
     confidence: Mapped[int] = mapped_column(Integer, nullable=False, default=0)

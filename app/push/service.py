@@ -393,9 +393,14 @@ class PushService:
             self._deliver(message_id)
         return len(ids)
 
+    def _min_relevance(self) -> int:
+        # Legacy settings key; its value now filters the model relevance score.
+        return int(self.settings.get("push.min_confidence", 50) or 0)
+
     def _urgent_candidates(self, now: datetime) -> list[tuple[Analysis, NewsItem]]:
         urgent = int(self.settings.get("push.urgent_threshold", 85) or 85)
         quiet_urgent = int(self.settings.get("push.quiet_urgent_threshold", 92) or 92)
+        min_relevance = self._min_relevance()
         in_quiet = self._in_quiet(now)
         with self.db.session() as session:
             rows = session.execute(
@@ -404,7 +409,7 @@ class PushService:
                 .where(
                     Analysis.push_status == "pending",
                     Analysis.push_eligible.is_(True),
-                    Analysis.macro_relevant.is_(True),
+                    Analysis.relevance >= min_relevance,
                     Analysis.push_score >= urgent,
                     Analysis.materiality >= 70,
                     Analysis.confidence >= 50,
@@ -496,6 +501,7 @@ class PushService:
                     analysis.push_status = "suppressed"
             return 0
         limit = int(self.settings.get("push.max_items_per_digest", 5) or 5)
+        min_relevance = self._min_relevance()
         with self.db.session() as session:
             rows = session.execute(
                 select(Analysis, NewsItem)
@@ -503,7 +509,7 @@ class PushService:
                 .where(
                     Analysis.push_status == "pending",
                     Analysis.push_eligible.is_(True),
-                    Analysis.macro_relevant.is_(True),
+                    Analysis.relevance >= min_relevance,
                 )
                 .order_by(Analysis.push_score.desc(), Analysis.created_at, Analysis.id)
                 .limit(max(1, limit))
@@ -543,6 +549,7 @@ class PushService:
 
     def _digest_candidates(self, since: datetime) -> list[tuple[Analysis, NewsItem]]:
         limit = int(self.settings.get("push.max_items_per_digest", 5) or 5)
+        min_relevance = self._min_relevance()
         with self.db.session() as session:
             rows = session.execute(
                 select(Analysis, NewsItem)
@@ -550,7 +557,7 @@ class PushService:
                 .where(
                     Analysis.push_status == "pending",
                     Analysis.push_eligible.is_(True),
-                    Analysis.macro_relevant.is_(True),
+                    Analysis.relevance >= min_relevance,
                     Analysis.created_at >= since,
                 )
                 .order_by(Analysis.push_score.desc(), Analysis.id)

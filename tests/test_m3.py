@@ -33,10 +33,10 @@ def test_flash_price_peak_and_offpeak():
 def test_parse_items_clamps_and_filters():
     content = """```json
     {"items":[
-      {"news_id":"1","macro_relevant":true,"materiality":120,"urgency":-2,"confidence":80,
+      {"news_id":"1","relevance":90,"materiality":120,"urgency":-2,"confidence":80,
        "direction":"bullish","horizon":"days","summary":"摘要","transmission":"传导",
        "sectors":["银行","银行","不存在"],"watch":"观察","caveat":"风险"},
-      {"news_id":"99","macro_relevant":true}
+      {"news_id":"99","relevance":90}
     ]}
     ```"""
     items = parse_items(content, {"1"})
@@ -48,20 +48,18 @@ def test_parse_items_clamps_and_filters():
     assert push_score(item) == round(0.55 * 100 + 0.25 * 0 + 0.20 * 80)
 
 
-def test_macro_relevance_is_required_before_confidence():
-    irrelevant = AnalysisItem(news_id="1", macro_relevant=False, confidence=99)
+def test_relevance_score_is_the_push_gate():
+    irrelevant = AnalysisItem(news_id="1", relevance=10, confidence=99)
     assert is_push_eligible(irrelevant, 60) is False
 
-    uncertain = AnalysisItem(news_id="2", macro_relevant=True, confidence=59)
-    assert is_push_eligible(uncertain, 60) is False
+    edge = AnalysisItem(news_id="2", relevance=59, confidence=99)
+    assert is_push_eligible(edge, 60) is False
 
-    relevant = AnalysisItem(news_id="3", macro_relevant=True, confidence=60)
+    relevant = AnalysisItem(news_id="3", relevance=60, confidence=10)
     assert is_push_eligible(relevant, 60) is True
 
-    string_false = parse_items(
-        '{"items":[{"news_id":"4","macro_relevant":"false","confidence":99}]}', {"4"}
-    )
-    assert string_false[0].macro_relevant is False
+    parsed = parse_items('{"items":[{"news_id":"4","relevance":77}]}', {"4"})
+    assert parsed[0].relevance == 77
 
 
 def test_analysis_saves_results_and_respects_cost_cap(app, monkeypatch):
@@ -120,7 +118,7 @@ def test_analysis_saves_results_and_respects_cost_cap(app, monkeypatch):
                     "items": [
                         {
                             "news_id": str(item_id),
-                            "macro_relevant": True,
+                            "relevance": 90,
                             "materiality": 80,
                             "urgency": 80,
                             "confidence": 80,

@@ -322,7 +322,7 @@ def should_analyze(now):
 - `confidence`：事实清晰度与传导链确定性。80～100 官方来源 + 明确条款；60～79 可信媒体 + 逻辑清楚；40～59 单一来源/信息不全；0～39 传闻/标题党/匿名来源。
 - `direction`：`bullish | bearish | neutral | uncertain`，只表示对 A 股整体的定性倾向，不是涨跌概率。
 - `horizon`：`intraday | days | weeks | months`。
-- `macro_relevant`：只有对 A 股整体或大范围板块有传导才为 `true`；单一个股、个股财报、个股人事、股评、涨停复盘为 `false`。
+- `relevance`：0–100 的财经/股票/宏观相关度评分，是推送资格的唯一语义门槛；天文、体育、娱乐、社会个案等低分，回购、并购、行业政策等即使没有固定关键词也可高分。
 
 **推送分**（服务端计算，不交给模型）：
 
@@ -333,11 +333,10 @@ push_score = round(0.55 * materiality + 0.25 * urgency + 0.20 * confidence)
 **推送资格**：
 
 ```text
-macro_relevant = true
-AND confidence >= push.min_confidence (默认 50)
+relevance >= push.min_confidence (默认 50)
 ```
 
-`macro_relevant` 是语义门槛：天文、体育、娱乐、明星、社会个案、普通天气等即使置信度很高也不推。`confidence` 只表示事实与传导链的确定性，不表示相关性；两者必须同时满足。重要性、推送分只用于排序、筛选视图和“重要”标记。
+`relevance` 是模型输出的财经/A股相关度分，不是置信度，也不是关键词命中。天文、体育、娱乐等低分不推；公司回购、并购、行业政策等即使没有固定关键词，只要模型判断有财经传导，就可以高分。`confidence` 只表示事实与传导链的确定性，不决定是否推送。重要性、推送分只用于排序、筛选视图和“重要”标记。
 
 紧急推送额外满足：
 
@@ -380,7 +379,7 @@ and confidence >= 50
 |---|---|---|
 | 推送时机 | 分析完成即推 | 不设定时摘要；每轮分析出的合格结果立即推送 |
 | 紧急阈值 | 85 | 达到时标题标“重要”；不再单独等待摘要 |
-| 最低置信度 | 50 | 仅对 `macro_relevant=true` 的新闻生效；相关性是前置门槛 |
+| 相关性分数门槛 | 50 | 对模型 `relevance` 0–100 分生效；低于门槛不推 |
 | 额度提醒 | 上限 >0 且剩余 5 条 | 每日推送上限只剩 5 条时，推一条系统提醒；0=不限，不提醒 |
 | 每条消息最多新闻 | 5 条 | 按分数降序；下一轮继续 |
 | 单条消息最大字符 | 1200 字 | 超长按条目边界拆分 |
@@ -444,7 +443,7 @@ SQLite，开启 `PRAGMA journal_mode=WAL`、`foreign_keys=ON`、`busy_timeout=50
 | `news_items` | `id`、`source_id`、`external_id`、`cluster_id`、`url`、`canonical_url`、`title`、`description`、`source_name`、`published_at`、`fetched_at`、`title_norm`、`simhash`、`content_hash`、`heuristic_score`、`status`、`raw_json` | 原始新闻元数据；`raw_json` 只存清洗后的必要字段，不存完整正文 |
 | `news_clusters` | `id`、`representative_news_id`、`title`、`first_seen_at`、`last_seen_at`、`member_count`、`analyzed_at`、`needs_reanalysis` | 事件簇 |
 | `analysis_batches` | `id`、`status`、`model`、`prompt_version`、`item_count`、`input_tokens`、`output_tokens`、`estimated_cost`、`started_at`、`finished_at`、`error_code`、`error_message` | 每次批量调用 |
-| `analyses` | `id`、`news_id` UNIQUE、`cluster_id`、`batch_id`、`macro_relevant`、`materiality`、`urgency`、`confidence`、`direction`、`horizon`、`summary`、`transmission`、`sectors_json`、`watch`、`caveat`、`push_score`、`push_eligible`、`push_status`、`created_at` | 分析结果 |
+| `analyses` | `id`、`news_id` UNIQUE、`cluster_id`、`batch_id`、`relevance`、`materiality`、`urgency`、`confidence`、`direction`、`horizon`、`summary`、`transmission`、`sectors_json`、`watch`、`caveat`、`push_score`、`push_eligible`、`push_status`、`created_at` | 分析结果；`relevance` 是推送门槛，`macro_relevant` 仅为旧数据保留 |
 | `push_messages` | `id`、`dedupe_key` UNIQUE、`kind`、`title`、`body_plain`、`body_markdown`、`status`、`attempts`、`next_attempt_at`、`provider`、`provider_msg_id`、`last_error`、`created_at`、`sent_at` | 一条实际发出的消息 |
 | `push_message_items` | `message_id`、`analysis_id` | 消息与分析的关联 |
 | `job_requests` | `id`、`job_name`、`payload_json`、`status`、`requested_by`、`created_at`、`started_at`、`finished_at`、`error` | Web 手动触发请求；worker 认领执行 |
@@ -549,7 +548,7 @@ analysis:
   max_chars_per_item: 500
   max_total_input_chars: 18000
   soft_stop_ratio: 0.9
-  prompt_version: v2
+  prompt_version: v3
   flash:
     enabled: false
     min_interval_minutes: 30
@@ -721,7 +720,7 @@ class PushMessage:
 
 ## 10. 提示词与输出契约
 
-提示词放 `app/analysis/prompts/analysis_v2.md`，禁止散落在代码字符串里。修改提示词必须升版本号，旧分析不自动重跑。
+提示词放 `app/analysis/prompts/analysis_v3.md`，禁止散落在代码字符串里。修改提示词必须升版本号，旧分析不自动重跑。
 
 ### 10.1 System Prompt（稳定前缀，便于上下文缓存）
 
@@ -738,7 +737,7 @@ class PushMessage:
 - confidence 0-100：80-100=官方来源且条款/数据清晰；60-79=可信媒体且逻辑清楚；40-59=单一来源或信息不全；0-39=传闻/标题党/匿名来源。
 - direction：bullish/bearish/neutral/uncertain，只表示对A股整体的定性倾向，不是涨跌概率。
 - horizon：intraday/days/weeks/months。
-- macro_relevant：只有对A股整体或大范围板块有传导才为 true。单一个股、个股财报、个股人事、股评、涨停复盘为 false。
+- relevance：0-100 财经/股票/宏观相关度。天文、体育、娱乐、社会个案等低分；公司回购、并购、行业政策等即使无固定关键词，也按实际传导链给分。
 
 写作要求：
 - summary 只写新闻事实，不超过80字，必须有原文依据。
@@ -752,7 +751,7 @@ class PushMessage:
 - 只输出 JSON，不要 Markdown 代码围栏，不要解释。
 
 输出结构：
-{"items":[{"news_id":"...","macro_relevant":true,"materiality":0,"urgency":0,"confidence":0,"direction":"neutral","horizon":"days","summary":"...","transmission":"...","sectors":[],"watch":"...","caveat":"..."}]}
+{"items":[{"news_id":"...","relevance":0,"materiality":0,"urgency":0,"confidence":0,"direction":"neutral","horizon":"days","summary":"...","transmission":"...","sectors":[],"watch":"...","caveat":"..."}]}
 ```
 
 ### 10.2 User Prompt
@@ -1135,7 +1134,7 @@ app/
     candidate.py
     service.py
   analysis/
-    prompts/analysis_v2.md
+    prompts/analysis_v3.md
     schema.py             # Pydantic 输出模型
     deepseek.py
     budget.py

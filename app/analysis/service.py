@@ -26,7 +26,7 @@ from app.settings_service import SettingsService
 
 
 logger = logging.getLogger("newsradar.analysis")
-PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "analysis_v2.md"
+PROMPT_PATH = Path(__file__).resolve().parent / "prompts" / "analysis_v3.md"
 DAY_FORMAT = "%Y-%m-%d"
 
 
@@ -225,7 +225,7 @@ class AnalysisService:
         model = str(self.settings.get("analysis.model", "deepseek-flash") or "deepseek-flash")
         base_url = str(self.settings.get("analysis.base_url", "https://api.deepseek.com"))
         api_key = str(self.settings.get("analysis.api_key", "") or "")
-        prompt_version = str(self.settings.get("analysis.prompt_version", "v2") or "v2")
+        prompt_version = str(self.settings.get("analysis.prompt_version", "v3") or "v3")
         max_tokens = int(self.settings.get("analysis.max_output_tokens", 4096) or 4096)
         timeout = int(self.settings.get("analysis.timeout_sec", 120) or 120)
         started = utcnow()
@@ -304,7 +304,8 @@ class AnalysisService:
                 input_price_cny=float(self.settings.get("analysis.input_price_cny", 1.0) or 1.0),
                 output_price_cny=float(self.settings.get("analysis.output_price_cny", 4.0) or 4.0),
             )
-        min_confidence = int(self.settings.get("push.min_confidence", 50) or 50)
+        # Legacy key name: this field now filters the LLM relevance score.
+        min_relevance = int(self.settings.get("push.min_confidence", 50) or 50)
         now = utcnow()
         saved = 0
         with self.db.session() as session:
@@ -333,10 +334,9 @@ class AnalysisService:
                 if item is None:
                     continue
                 score = push_score(result)
-                # Confidence only says how certain the facts/transmission are.
-                # A clear astronomy or sports story is still irrelevant. Require
-                # the model's semantic macro-relevance flag before confidence.
-                eligible = is_push_eligible(result, min_confidence)
+                # The model returns a 0-100 finance/A-share relevance score.
+                # That score, not confidence, decides whether a story is on-topic.
+                eligible = is_push_eligible(result, min_relevance)
                 analysis = session.scalar(
                     select(Analysis).where(Analysis.news_id == item.id).limit(1)
                 )
@@ -345,7 +345,7 @@ class AnalysisService:
                     session.add(analysis)
                 analysis.cluster_id = item.cluster_id
                 analysis.batch_id = batch_id
-                analysis.macro_relevant = result.macro_relevant
+                analysis.relevance = result.relevance
                 analysis.materiality = result.materiality
                 analysis.urgency = result.urgency
                 analysis.confidence = result.confidence
